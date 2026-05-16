@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pn_notification_channel_name">Fetchy Notifications</string>
+    <string name="pn_notification_channel_description">Notifications delivered by the Fetchy SDK.</string>
+    <string name="pn_notification_fallback_title">Fetchy</string>
+    <string name="pn_notification_action_open">Open %1$d</string>
+    <string name="pn_notification_fallback_body">Open the latest updates in the app.</string>
+</resources>

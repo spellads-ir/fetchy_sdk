@@ -1,0 +1,15 @@
+﻿{
+  "environment": "production",
+  "base_url": "https://your-api.example.com",
+  "api_key": "your_fetchy_app_api_key",
+  "pull": {
+    "enabled": true,
+    "worker_enabled": true,
+    "poll_interval_minutes": 15
+  },
+  "notification": {
+    "channel_id": "pn_notification_channel",
+    "channel_name": "Fetchy Notifications",
+    "channel_description": "Notifications delivered by the Fetchy SDK."
+  }
+}
