@@ -1,59 +1,30 @@
-﻿# Fetchy Kotlin SDK
+راهنمای اتصال SDK فچی (Fetchy) به پروژه اندروید
+این مستند مراحل لازم برای اضافه کردن و راه‌اندازی SDK فچی را در یک پروژه اندرویدی (با استفاده از Kotlin و Gradle KTS) توضیح می‌دهد.
 
-Fetchy is a pull-only Android SDK for backend-driven notifications.
+۱. اضافه کردن مخزن JitPack از آنجایی که این کتابخانه در JitPack میزبانی می‌شود، باید آدرس آن را به تنظیمات پروژه اضافه کنید.
+در فایل settings.gradle.kts (یا فایل build.gradle پروژه):
 
-## Exported Public API
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // اضافه کردن این خط
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+۲. اضافه کردن وابستگی (Dependency) در فایل build.gradle.kts مربوط به ماژول اپلیکیشن (معمولاً در مسیر app/build.gradle.kts)، خط زیر را به بخش dependencies اضافه کنید:
+dependencies {
+    // استفاده از آخرین نسخه یا شناسه کامیت
+    implementation("com.github.spellads-ir:fetchy_sdk:5da42ee")
+}
+۳. ایجاد فایل پیکربندی این SDK برای کارکرد صحیح به یک فایل تنظیمات با نام fetchy-config.json در پوشه assets نیاز دارد.
+۱. اگر پوشه assets وجود ندارد، آن را در مسیر app/src/main/assets/ بسازید. ۲. فایلی با نام fetchy-config.json ایجاد کرده و محتوای زیر را در آن قرار دهید:
 
-Package: `com.fetchy.sdk`
-
-### `Fetchy`
-
-1. `Fetchy.initialize(context: Context)`
-- Initializes the SDK with default client type `ANDROID_NATIVE`.
-- Loads `fetchy-config.json` from app assets.
-- Schedules startup and periodic pull sync via `WorkManager`.
-
-2. `Fetchy.initialize(context: Context, clientType: FetchyClientType)`
-- Initializes the SDK with an explicit client type.
-- Intended for wrappers/bridges such as Flutter plugin integrations.
-
-3. `Fetchy.getNotificationPermissionStatus(context: Context): FetchyNotificationPermissionStatus`
-- Returns current notification permission state.
-
-4. `Fetchy.syncNotificationPermissionStatus(context: Context): FetchyNotificationPermissionStatus`
-- Re-checks and persists permission state.
-
-### `FetchyClientType`
-
-- `ANDROID_NATIVE` -> `android_native`
-- `FLUTTER_ANDROID` -> `flutter_android`
-
-This value is included in `/tokens/register` payload as `client_type`.
-
-### `FetchyNotificationPermissionStatus`
-
-- `GRANTED`
-- `DENIED`
-- `UNKNOWN`
-
-## SDK Contract Summary
-
-1. Registers or refreshes backend token through `/tokens/register`.
-2. Polls `/feed` on startup and periodically.
-3. Stores notifications locally and displays them through Android notification stack.
-4. Sends direct click ack only for internal app links that the SDK opens inside the host device.
-
-The SDK does not expose push callback APIs and does not require Firebase/FCM.
-
-## Required App Asset
-
-Create `fetchy-config.json` in host app assets:
-
-```json
 {
   "environment": "production",
-  "base_url": "https://your-api.example.com",
-  "api_key": "your_fetchy_app_api_key",
+  "base_url": "https://api.spellads.ir",
+  "api_key": "YOUR_API_KEY_HERE",
   "pull": {
     "enabled": true,
     "worker_enabled": true,
@@ -65,32 +36,20 @@ Create `fetchy-config.json` in host app assets:
     "channel_description": "Notifications delivered by the Fetchy SDK."
   }
 }
-```
+نکته: مقدار `api_key` را با کلیدی که از پنل دریافت کرده‌اید جایگزین کنید.
 
-## Minimal Integration Example
+۴. مقداردهی اولیه (Initialization) بهترین مکان برای راه‌اندازی SDK، کلاس Application یا اولین Activity برنامه است.
+در MainActivity.kt:
 
-```kotlin
-import android.app.Application
 import com.fetchy.sdk.Fetchy
 
-class App : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        Fetchy.initialize(applicationContext)
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // مقداردهی اولیه با استفاده از Context
+        Fetchy.initialize(this)
     }
 }
-```
-
-## Build and Publish
-
-1. Build:
-
-```bash
-./gradlew :fetchy-sdk:assembleRelease
-```
-
-2. Publish to Maven Local:
-
-```bash
-./gradlew :fetchy-sdk:publishToMavenLocal
-```
+۵. دسترسی‌ها (Permissions) کتابخانه به صورت خودکار دسترسی‌های لازم (INTERNET, ACCESS_NETWORK_STATE, POST_NOTIFICATIONS) را به مانیفست شما اضافه می‌کند.
+توجه: در اندروید ۱۳ (API 33) و بالاتر، برای نمایش نوتیفیکیشن‌ها باید در زمان اجرا (Runtime) مجوز POST_NOTIFICATIONS را از کاربر درخواست کنید.
