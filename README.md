@@ -1,39 +1,39 @@
 # راهنمای اتصال SDK فچی (Fetchy) به پروژه اندروید
 
-این مستند مراحل لازم برای اضافه کردن و راه‌اندازی SDK فچی را در یک پروژه اندرویدی (با استفاده از Kotlin و Gradle KTS) توضیح می‌دهد.
+این راهنما مراحل اضافه کردن و راه‌اندازی SDK فچی را در یک پروژه اندرویدی با Kotlin و Gradle KTS توضیح می‌دهد.
 
 ## ۱. اضافه کردن مخزن JitPack
-از آنجایی که این کتابخانه در JitPack میزبانی می‌شود، باید آدرس آن را به تنظیمات پروژه اضافه کنید.
 
-در فایل `settings.gradle.kts` (یا فایل `build.gradle` پروژه):
+در وضعیت فعلی مصرف این SDK، وابستگی از طریق JitPack دریافت می‌شود. بنابراین باید مخزن زیر را به `settings.gradle.kts` پروژه اضافه کنید:
 
 ```kotlin
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-        // اضافه کردن این خط
-        maven { url = uri("https://jitpack.io") }
-    }
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    google()
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+  }
 }
 ```
 
-## ۲. اضافه کردن وابستگی (Dependency)
-در فایل `build.gradle.kts` مربوط به ماژول اپلیکیشن (معمولاً در مسیر `app/build.gradle.kts`)، خط زیر را به بخش `dependencies` اضافه کنید:
+## ۲. اضافه کردن وابستگی
+
+در فایل `build.gradle.kts` ماژول اپلیکیشن، وابستگی SDK را اضافه کنید:
 
 ```kotlin
 dependencies {
-    // استفاده از آخرین نسخه یا شناسه کامیت
-    implementation("com.github.spellads-ir:fetchy_sdk:5da42ee")
+  implementation("com.github.spellads-ir:fetchy_sdk:5da42ee")
 }
 ```
 
-## ۳. ایجاد فایل پیکربندی
-این SDK برای کارکرد صحیح به یک فایل تنظیمات با نام `fetchy-config.json` در پوشه `assets` نیاز دارد.
+می‌توانید به جای شناسه کامیت، از tag یا نسخه‌ای که برای انتشار روی JitPack در دسترس است هم استفاده کنید.
 
-۱. اگر پوشه `assets` وجود ندارد، آن را در مسیر `app/src/main/assets/` بسازید.
-۲. فایلی با نام `fetchy-config.json` ایجاد کرده و محتوای زیر را در آن قرار دهید:
+## ۳. ایجاد فایل پیکربندی
+
+SDK در زمان راه‌اندازی فایل `fetchy-config.json` را از پوشه `assets` می‌خواند. این فایل باید در مسیر `app/src/main/assets/fetchy-config.json` قرار بگیرد.
+
+نمونه پیکربندی:
 
 ```json
 {
@@ -52,30 +52,45 @@ dependencies {
   }
 }
 ```
-*نکته: مقدار `api_key` را با کلیدی که از پنل دریافت کرده‌اید جایگزین کنید.*
 
-## ۴. مقداردهی اولیه (Initialization)
-بهترین مکان برای راه‌اندازی SDK، کلاس `Application` یا اولین `Activity` برنامه است.
+نکات مهم:
 
-در `MainActivity.kt`:
+1. مقدار `base_url` اجباری است.
+2. مقدار `api_key` اجباری است و می‌تواند در ریشه فایل یا در `pull.api_key` قرار بگیرد.
+3. اگر پوشه `assets` وجود ندارد، آن را در مسیر `app/src/main/assets/` بسازید.
+4. فایل نمونه آماده نیز در همین مخزن با نام `fetchy-config.sample.json` قرار دارد.
+
+## ۴. مقداردهی اولیه SDK
+
+برای شروع کار SDK کافی است یک `Context` به متد `Fetchy.initialize(...)` بدهید. بهترین محل برای این کار کلاس `Application` است تا SDK فقط یک بار هنگام بالا آمدن برنامه راه‌اندازی شود.
 
 ```kotlin
+import android.app.Application
 import com.fetchy.sdk.Fetchy
 
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        // مقداردهی اولیه با استفاده از Context
-        Fetchy.initialize(this)
-    }
+class App : Application() {
+  override fun onCreate() {
+    super.onCreate()
+    Fetchy.initialize(this)
+  }
 }
 ```
 
-## ۵. دسترسی‌ها (Permissions)
-کتابخانه به صورت خودکار دسترسی‌های لازم (`INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS`) را به مانیفست شما اضافه می‌کند. 
+در صورت نیاز می‌توانید این متد را از اولین `Activity` هم صدا بزنید، اما استفاده از `Application` پایدارتر است.
 
-**توجه:** در اندروید ۱۳ (API 33) و بالاتر، برای نمایش نوتیفیکیشن‌ها باید در زمان اجرا (Runtime) مجوز `POST_NOTIFICATIONS` را از کاربر درخواست کنید.
+## ۵. دسترسی‌ها و نوتیفیکیشن
 
----
-*تهیه شده توسط: دستیار هوشمند توسعه‌دهنده*
+کتابخانه در مانیفست خود این permissionها را اعلام می‌کند:
+
+- `INTERNET`
+- `ACCESS_NETWORK_STATE`
+- `POST_NOTIFICATIONS`
+
+نکته مهم: اضافه شدن `POST_NOTIFICATIONS` به مانیفست به معنای دریافت خودکار مجوز از کاربر نیست. در اندروید ۱۳ و بالاتر، اپلیکیشن شما همچنان باید این مجوز را در زمان اجرا درخواست کند.
+
+در صورت نیاز می‌توانید وضعیت این مجوز را هم از طریق APIهای زیر بخوانید:
+
+```kotlin
+Fetchy.getNotificationPermissionStatus(context)
+Fetchy.syncNotificationPermissionStatus(context)
+```
