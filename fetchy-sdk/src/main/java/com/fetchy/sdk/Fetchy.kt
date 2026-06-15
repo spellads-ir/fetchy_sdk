@@ -54,6 +54,14 @@ object Fetchy {
     }
 
     @JvmStatic
+    fun getToken(context: Context): String? {
+        return runBlocking {
+            FetchyRepositoryProvider.get(context.applicationContext).getBackendToken()
+                ?.takeIf { it.isNotBlank() }
+        }
+    }
+
+    @JvmStatic
     fun getNotificationPermissionStatus(context: Context): FetchyNotificationPermissionStatus {
         return FetchyPermissionStateResolver.resolve(context.applicationContext)
     }
