@@ -53,7 +53,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.github.spellads-ir:fetchy_sdk:f021bb7456")
+    implementation 'com.github.spellads-ir:fetchy_sdk:main-SNAPSHOT'
 }
 ```
 
