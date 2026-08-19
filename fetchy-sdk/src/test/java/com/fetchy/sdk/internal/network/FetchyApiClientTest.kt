@@ -3,6 +3,7 @@
 import com.fetchy.sdk.internal.model.AckLinkRequest
 import com.fetchy.sdk.internal.model.FetchyScope
 import com.fetchy.sdk.internal.model.FetchySource
+import com.fetchy.sdk.internal.model.RegisterTokenRequest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -100,5 +101,31 @@ class FetchyApiClientTest {
         assertTrue(body.contains("\"link_url\":\"myapp://news/1201\""))
         assertFalse(body.contains("deep_link"))
         assertTrue(body.contains("\"signature\":\"sig-1\""))
+    }
+
+    @Test
+    fun registerToken_includesFcmToken() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":"device-1"}"""))
+
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        val token = client.registerToken(
+            RegisterTokenRequest(
+                appApiKey = "api-key",
+                existingToken = null,
+                clientType = "android_native",
+                fcmToken = "fcm-abc",
+                deviceBrand = "Google",
+                deviceModel = "Pixel",
+                androidVersion = "14",
+                androidApiLevel = 34,
+                appVersion = "1.0",
+                sdkVersion = "1.4.0"
+            )
+        )
+        assertEquals("device-1", token)
+
+        val request = server.takeRequest()
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"fcm_token\":\"fcm-abc\""))
     }
 }

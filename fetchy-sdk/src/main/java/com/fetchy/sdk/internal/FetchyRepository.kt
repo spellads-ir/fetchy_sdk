@@ -63,6 +63,16 @@ internal class FetchyRepository(private val context: Context) {
         upsertState(FetchyConstants.stateRegisterFingerprint, fingerprint)
     }
 
+    suspend fun saveFcmToken(token: String) {
+        upsertState(FetchyConstants.stateFcmToken, token)
+    }
+
+    suspend fun getFcmToken(): String? = database.stateDao().getValue(FetchyConstants.stateFcmToken)
+
+    suspend fun purgeExpiredNotifications(nowEpochMs: Long = System.currentTimeMillis()) {
+        database.notificationDao().deleteOlderThan(nowEpochMs - FetchyConstants.notificationDedupeTtlMs)
+    }
+
     suspend fun getLastRetrieve(): Long {
         return database.stateDao().getValue(FetchyConstants.stateLastRetrieve)?.toLongOrNull() ?: 0L
     }
@@ -127,6 +137,7 @@ internal class FetchyRepository(private val context: Context) {
             appApiKey = config.pull.effectiveApiKey ?: config.apiKey,
             existingToken = null,
             clientType = getClientType().take(50),
+            fcmToken = getFcmToken()?.takeIf { it.isNotBlank() }?.take(4096),
             deviceBrand = Build.BRAND.take(100),
             deviceModel = Build.MODEL.take(100),
             androidVersion = Build.VERSION.RELEASE.orEmpty().take(50),

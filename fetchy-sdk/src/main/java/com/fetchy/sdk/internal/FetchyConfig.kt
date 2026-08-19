@@ -7,6 +7,7 @@ internal data class FetchyConfig(
     val apiKey: String,
     val baseUrl: String,
     val pull: FetchyPullConfig = FetchyPullConfig(),
+    val push: FetchyPushConfig = FetchyPushConfig(),
     val externalUserId: String? = null,
     val notification: FetchyNotificationConfig = FetchyNotificationConfig(),
     val environment: String = "production"
@@ -28,13 +29,20 @@ internal data class FetchyPullConfig(
     val apiKeyOverride: String? = null
 ) {
     fun normalized(): FetchyPullConfig = copy(
-        pollIntervalMinutes = FetchyConstants.periodicPullIntervalMinutes,
+        pollIntervalMinutes = pollIntervalMinutes.coerceAtLeast(1L),
         apiKeyOverride = apiKeyOverride?.trim()?.takeIf { it.isNotEmpty() }
     )
 
     val effectiveApiKey: String?
         get() = apiKeyOverride?.takeIf { it.isNotBlank() }
+
+    val backgroundPollIntervalMinutes: Long
+        get() = pollIntervalMinutes.coerceAtLeast(FetchyConstants.periodicPullIntervalMinutes)
 }
+
+internal data class FetchyPushConfig(
+    val enabled: Boolean = true
+)
 
 internal data class FetchyNotificationConfig(
     val channelId: String = "pn_notification_channel",

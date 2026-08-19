@@ -3,6 +3,8 @@
 internal object FetchyConstants {
     const val configAssetName = "fetchy-config.json"
     const val periodicPullIntervalMinutes = 15L
+    const val foregroundPullIntervalMs = 60_000L
+    const val notificationDedupeTtlMs = 48L * 60L * 60L * 1000L
     const val uniquePeriodicWorkName = "pn_notif_worker"
     const val uniqueSyncWorkName = "pn_notif_sync"
     const val databaseName = "pn_fetchy.db"
@@ -12,6 +14,7 @@ internal object FetchyConstants {
     const val stateClientType = "pn_client_type"
     const val stateLastRetrieve = "pn_last_retrieve"
     const val stateRegisterFingerprint = "pn_register_fingerprint"
+    const val stateFcmToken = "pn_fcm_token"
     const val stateNotificationPermissionStatus = "pn_notification_permission_status"
     const val stateNotificationPermissionUpdatedAt = "pn_notification_permission_updated_at"
 

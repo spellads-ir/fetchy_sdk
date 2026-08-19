@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import com.fetchy.sdk.internal.FetchyConfig
 import com.fetchy.sdk.internal.FetchyConfigLoader
 import com.fetchy.sdk.internal.FetchyConstants
+import com.fetchy.sdk.internal.FetchyForegroundPoller
 import com.fetchy.sdk.internal.FetchyRepositoryProvider
 import com.fetchy.sdk.internal.notification.FetchyNotifier
 import com.fetchy.sdk.internal.notification.FetchyPermissionStateResolver
@@ -49,6 +50,8 @@ object Fetchy {
             bootstrapMutex.withLock {
                 persistRuntime(appContext, config, clientType)
                 scheduleSync(appContext, config)
+                FetchyForegroundPoller.start(appContext)
+                refreshFcmToken(appContext)
             }
         }
     }
@@ -64,6 +67,19 @@ object Fetchy {
     @JvmStatic
     fun getNotificationPermissionStatus(context: Context): FetchyNotificationPermissionStatus {
         return FetchyPermissionStateResolver.resolve(context.applicationContext)
+    }
+
+    @JvmStatic
+    fun onNewToken(context: Context, token: String) {
+        com.fetchy.sdk.internal.fcm.FetchyFcmCoordinator.saveTokenAndSync(context.applicationContext, token)
+    }
+
+    @JvmStatic
+    fun handleRemoteMessage(context: Context, data: Map<String, String>) {
+        val appContext = context.applicationContext
+        bootstrapScope.launch {
+            com.fetchy.sdk.internal.fcm.FetchyFcmBridge.onMessageReceived(appContext, data)
+        }
     }
 
     @JvmStatic
@@ -99,7 +115,7 @@ object Fetchy {
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             val periodicRequest = PeriodicWorkRequestBuilder<FetchySyncWorker>(
-                FetchyConstants.periodicPullIntervalMinutes,
+                config.pull.backgroundPollIntervalMinutes,
                 TimeUnit.MINUTES
             )
                 .setConstraints(constraints)
@@ -175,6 +191,19 @@ object Fetchy {
         val updatedAt = System.currentTimeMillis()
         repository.saveNotificationPermissionStatus(permissionStatus, updatedAt)
         return permissionStatus
+    }
+
+    private fun refreshFcmToken(context: Context) {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                .addOnSuccessListener { token ->
+                    if (!token.isNullOrBlank()) {
+                        com.fetchy.sdk.internal.fcm.FetchyFcmCoordinator.saveTokenAndSync(context, token)
+                    }
+                }
+        } catch (_: Exception) {
+            // Host app may not have initialized Firebase yet.
+        }
     }
 
 }

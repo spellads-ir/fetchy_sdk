@@ -12,6 +12,7 @@ internal object FetchyConfigLoader {
     fun fromJson(json: String): FetchyConfig {
         val root = JSONObject(json)
         val pullJson = root.optJSONObject("pull")
+        val pushJson = root.optJSONObject("push")
         val notificationJson = root.optJSONObject("notification")
 
         return FetchyConfig(
@@ -27,6 +28,9 @@ internal object FetchyConfigLoader {
                     "poll_interval_minutes",
                     FetchyConstants.periodicPullIntervalMinutes
                 ) ?: FetchyConstants.periodicPullIntervalMinutes
+            ),
+            push = FetchyPushConfig(
+                enabled = pushJson?.optBoolean("enabled", true) ?: true
             ),
             notification = FetchyNotificationConfig(
                 channelId = notificationJson?.optString("channel_id", "pn_notification_channel")
@@ -53,6 +57,10 @@ internal object FetchyConfigLoader {
                     .put("worker_enabled", config.pull.workerEnabled)
                     .put("poll_interval_minutes", config.pull.pollIntervalMinutes)
                     .put("api_key", config.pull.effectiveApiKey ?: config.apiKey)
+            )
+            .put(
+                "push",
+                JSONObject().put("enabled", config.push.enabled)
             )
             .put(
                 "notification",

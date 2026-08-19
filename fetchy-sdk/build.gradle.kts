@@ -6,7 +6,7 @@
 }
 
 group = "com.fetchy"
-version = "1.3.8"
+version = "1.4.0"
 
 android {
     namespace = "com.fetchy.sdk"
@@ -45,7 +45,7 @@ android {
     }
 
     buildTypes.all {
-        buildConfigField("String", "FETCHY_SDK_VERSION", "\"1.3.8\"")
+        buildConfigField("String", "FETCHY_SDK_VERSION", "\"1.4.0\"")
     }
 }
 
@@ -86,11 +86,14 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("com.caverock:androidsvg-aar:1.4")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.firebase:firebase-messaging:24.1.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")

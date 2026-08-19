@@ -29,6 +29,7 @@ internal class FetchyApiClient(
             .put("app_api_key", request.appApiKey)
             .put("existing_token", request.existingToken.orEmpty())
             .put("client_type", request.clientType)
+            .put("fcm_token", request.fcmToken.orEmpty())
             .put("device_brand", request.deviceBrand)
             .put("device_model", request.deviceModel)
             .put("android_version", request.androidVersion)
@@ -118,7 +119,7 @@ internal class FetchyApiClient(
                 add(
                     FetchyNotificationPayload(
                         source = source,
-                        scope = scope,
+                        scope = item.optString("scope").toScope(scope),
                         title = item.optString("title").ifBlank { "Fetchy" },
                         body = item.optString("body"),
                         badgeUrl = item.optString("badge_url").takeIf { it.isNotBlank() },
@@ -131,7 +132,9 @@ internal class FetchyApiClient(
                         clickAckSignature = item.optString("click_ack_signature").takeIf { it.isNotBlank() },
                         createdAtEpochMs = item.optString("created_at").takeIf { it.isNotBlank() }?.let(::parseBackendTimestamp),
                         fetchyId = item.optString("fetchy_id").takeIf { it.isNotBlank() },
-                        schemaVersion = item.optInt("schema_version").takeIf { it != 0 }
+                        schemaVersion = item.optInt("schema_version").takeIf { it != 0 },
+                        runId = item.optLong("run_id").takeIf { it != 0L },
+                        pushScheduleType = item.optString("push_schedule_type").takeIf { it.isNotBlank() }
                     )
                 )
             }
@@ -169,6 +172,14 @@ internal class FetchyApiClient(
             timeZone = TimeZone.getTimeZone("UTC")
         }
         return formatter.parse(normalized)?.time ?: 0L
+    }
+
+    private fun String.toScope(fallback: FetchyScope): FetchyScope {
+        return when (trim().lowercase()) {
+            "exclusive" -> FetchyScope.EXCLUSIVE
+            "broadcast" -> FetchyScope.BROADCAST
+            else -> fallback
+        }
     }
 
     private fun parseActionButtonArray(array: JSONArray?): List<ActionButton> {

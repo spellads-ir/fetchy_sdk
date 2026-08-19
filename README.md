@@ -97,6 +97,8 @@ Fetchy کانفیگ را از فایل asset می‌خواند.
 - `base_url` و `api_key` اجباری هستند.
 - `api_key` می‌تواند در ریشه یا در `pull.api_key` باشد.
 - اگر `base_url` اشتباه باشد، ثبت توکن انجام نمی‌شود.
+- `pull.poll_interval_minutes` برای worker پس‌زمینه است و حداقل ۱۵ دقیقه اعمال می‌شود (محدودیت WorkManager).
+- وقتی اپ در foreground است، SDK هر ۱ دقیقه feed را poll می‌کند.
 
 ---
 
@@ -160,6 +162,30 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 
 ---
 
+## 7.1) Firebase Cloud Messaging
+
+SDK خودش `FetchyFirebaseMessagingService` را register می‌کند و توکن FCM را به `/tokens/register` می‌فرستد. اپ میزبان باید `google-services.json` را داشته باشد و plugin `com.google.gms.google-services` را روی ماژول app اعمال کند.
+
+پیام‌های FCM باید **data-only** باشند (بدون بلوک `notification`) تا SDK بتواند نمایش و dedup را خودش انجام دهد.
+
+اگر اپ شما از قبل `FirebaseMessagingService` دارد، رویدادها را به SDK forward کنید:
+
+```kotlin
+override fun onNewToken(token: String) {
+    Fetchy.onNewToken(this, token)
+}
+
+override fun onMessageReceived(message: RemoteMessage) {
+    Fetchy.handleRemoteMessage(this, message.data)
+}
+```
+
+یک notification ممکن است هم از FCM و هم از pull برسد. SDK با کلید پایدار (`broadcast:{id}` یا `exclusive:{id}` و برای recurring `broadcast:{id}:{run_id}`) duplicate را تا ۴۸ ساعت حذف می‌کند.
+
+محدودیت recurring: تکرارهای بعدی فقط روی دستگاه‌هایی که FCM دارند می‌آید. دستگاه بدون FCM همان کمپین را یک‌بار از pull می‌گیرد.
+
+---
+
 ## 8) اجرای پروژه و تست اولیه
 
 1. اپ را اجرا کنید.
@@ -199,6 +225,7 @@ val token = Fetchy.getToken(context)
 - [ ] `base_url` و `api_key` معتبر هستند
 - [ ] `Application` سفارشی ساخته و در Manifest معرفی شده
 - [ ] permissionها در Manifest و Runtime تنظیم شده‌اند
+- [ ] `google-services.json` و plugin گوگل روی app module اضافه شده‌اند
 - [ ] نوتیف تستی دریافت شده است
 
 ---

@@ -30,21 +30,35 @@ internal data class FetchyNotificationPayload(
     val clickAckSignature: String? = null,
     val createdAtEpochMs: Long? = null,
     val fetchyId: String? = null,
-    val schemaVersion: Int? = null
+    val schemaVersion: Int? = null,
+    val runId: Long? = null,
+    val pushScheduleType: String? = null
 ) {
     fun dedupeKey(): String {
-        val stableRemoteId = remoteNotificationId?.toString() ?: "na"
-        val stableCreatedAt = createdAtEpochMs?.toString() ?: "na"
-        val stableLink = linkUrl ?: actionButtons.joinToString(separator = "|") { it.url }
-        return listOf(source.name, scope.name, stableRemoteId, title, body, stableLink, stableCreatedAt)
-            .joinToString(separator = "::")
+        val id = remoteNotificationId?.toString()
+            ?: fetchyId?.takeIf { it.isNotBlank() }
+            ?: "na"
+        return when (scope) {
+            FetchyScope.EXCLUSIVE -> "exclusive:$id"
+            FetchyScope.BROADCAST -> {
+                val run = runId?.takeIf { it != 0L }
+                if (pushScheduleType == "recurring" && run != null) {
+                    "broadcast:$id:$run"
+                } else {
+                    "broadcast:$id"
+                }
+            }
+        }
     }
+
+    fun trayNotificationId(): Int = dedupeKey().hashCode()
 }
 
 internal data class RegisterTokenRequest(
     val appApiKey: String,
     val existingToken: String?,
     val clientType: String,
+    val fcmToken: String? = null,
     val deviceBrand: String,
     val deviceModel: String,
     val androidVersion: String,

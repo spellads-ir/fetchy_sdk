@@ -45,6 +45,8 @@ internal class FetchyEngine(private val context: Context) {
             repository.saveRegisterFingerprint(currentFingerprint)
         }
 
+        repository.purgeExpiredNotifications()
+
         if (!config.pull.enabled || !config.pull.workerEnabled || !allowFeedFetch) {
             return@withLock
         }
@@ -62,29 +64,10 @@ internal class FetchyEngine(private val context: Context) {
         val receivedAt = System.currentTimeMillis()
         lastFeedFetchCompletedAtElapsedMs = SystemClock.elapsedRealtime()
         val fetchedNotifications = feedResponse.notifications + feedResponse.exclusiveNotifications
-        var storedCount = 0
-        var successfulDisplayCount = 0
         var failedDisplayCount = 0
 
         fetchedNotifications.forEach { payload ->
-            val entity = resolveNotificationEntity(payload, receivedAt)
-            if (entity == null) {
-                failedDisplayCount += 1
-                return@forEach
-            }
-
-            if (entity.displayedAtEpochMs != null) {
-                successfulDisplayCount += 1
-                return@forEach
-            }
-
-            if (entity.receivedAtEpochMs == receivedAt) {
-                storedCount += 1
-            }
-
-            if (notifier.showNotification(entity.localId, config)) {
-                successfulDisplayCount += 1
-            } else {
+            if (!ingestPayload(payload, config, receivedAt)) {
                 failedDisplayCount += 1
             }
         }
@@ -93,6 +76,26 @@ internal class FetchyEngine(private val context: Context) {
             repository.saveLastRetrieve(computeNextCursor(feedResponse, receivedAt))
         }
         }
+    }
+
+    suspend fun ingestFromPush(payload: FetchyNotificationPayload) {
+        syncMutex.withLock {
+            repository.purgeExpiredNotifications()
+            val config = repository.getConfig() ?: return@withLock
+            ingestPayload(payload, config, System.currentTimeMillis())
+        }
+    }
+
+    private suspend fun ingestPayload(
+        payload: FetchyNotificationPayload,
+        config: FetchyConfig,
+        receivedAtEpochMs: Long
+    ): Boolean {
+        val entity = resolveNotificationEntity(payload, receivedAtEpochMs) ?: return false
+        if (entity.displayedAtEpochMs != null) {
+            return true
+        }
+        return notifier.showNotification(entity.localId, config)
     }
 
     private suspend fun resolveNotificationEntity(
@@ -107,6 +110,7 @@ internal class FetchyEngine(private val context: Context) {
         listOf(
             request.appApiKey,
             request.clientType,
+            request.fcmToken.orEmpty(),
             request.deviceBrand,
             request.deviceModel,
             request.androidVersion,

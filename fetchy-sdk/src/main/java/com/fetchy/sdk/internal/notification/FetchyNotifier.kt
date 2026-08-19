@@ -51,7 +51,7 @@ internal class FetchyNotifier(private val context: Context) {
         }
 
         return try {
-            val notificationId = localNotificationId.hashCode()
+            val notificationId = entity.dedupeKey.hashCode()
             val contentIntent = PendingIntent.getActivity(
                 context,
                 notificationId,

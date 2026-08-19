@@ -80,6 +80,9 @@ internal interface SpNotificationDao {
     @Query("UPDATE pn_notifications SET openedAtEpochMs = :openedAt WHERE localId = :localId")
     suspend fun markOpened(localId: Long, openedAt: Long)
 
+    @Query("DELETE FROM pn_notifications WHERE receivedAtEpochMs < :cutoffEpochMs")
+    suspend fun deleteOlderThan(cutoffEpochMs: Long)
+
     @Query("DELETE FROM pn_notifications")
     suspend fun clearAll()
 }
@@ -96,7 +99,7 @@ internal interface SpAckDao {
         SpNotificationEntity::class,
         SpAckRecordEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 internal abstract class FetchyDatabase : RoomDatabase() {
