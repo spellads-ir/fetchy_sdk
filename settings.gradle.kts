@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "fetchy-sdk"
 include(":fetchy-sdk")
+include(":sample-app")

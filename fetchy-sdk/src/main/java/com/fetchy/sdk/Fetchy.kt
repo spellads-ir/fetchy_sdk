@@ -47,11 +47,15 @@ object Fetchy {
         val appContext = context.applicationContext
         val config = prepareRuntime(appContext, clientType)
         bootstrapScope.launch {
-            bootstrapMutex.withLock {
-                persistRuntime(appContext, config, clientType)
-                scheduleSync(appContext, config)
-                FetchyForegroundPoller.start(appContext)
-                refreshFcmToken(appContext)
+            try {
+                bootstrapMutex.withLock {
+                    persistRuntime(appContext, config, clientType)
+                    scheduleSync(appContext, config)
+                    FetchyForegroundPoller.start(appContext)
+                    refreshFcmToken(appContext)
+                }
+            } catch (_: Exception) {
+                // Registration/sync failures must not crash the host app.
             }
         }
     }

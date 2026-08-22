@@ -136,7 +136,7 @@ internal class FetchyRepository(private val context: Context) {
         return RegisterTokenRequest(
             appApiKey = config.pull.effectiveApiKey ?: config.apiKey,
             existingToken = null,
-            clientType = getClientType().take(50),
+            clientType = getClientType().ifBlank { "android_native" }.take(50),
             fcmToken = getFcmToken()?.takeIf { it.isNotBlank() }?.take(4096),
             deviceBrand = Build.BRAND.take(100),
             deviceModel = Build.MODEL.take(100),

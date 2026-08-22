@@ -29,6 +29,9 @@ local.properties
 # Generated files
 gen/
 generated/
+sample-app/google-services.json
+sample-app/src/main/assets/fetchy-config.json
+sample-app/build/
 
 # OS files
 .DS_Store
