@@ -142,15 +142,24 @@ object Fetchy {
             workManager.cancelUniqueWork(FetchyConstants.uniquePeriodicWorkName)
         }
 
-        scheduleImmediateSync(
-            context = context,
-            reason = "initialize",
-            allowFeedFetch = config.pull.enabled && config.pull.workerEnabled
+        workManager.enqueueUniqueWork(
+            FetchyConstants.uniqueRegisterWorkName,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            immediateSyncRequest(reason = "initialize", allowFeedFetch = false)
         )
+        if (config.pull.enabled && config.pull.workerEnabled) {
+            workManager.enqueueUniqueWork(
+                FetchyConstants.uniqueSyncWorkName,
+                ExistingWorkPolicy.KEEP,
+                immediateSyncRequest(reason = "initialize", allowFeedFetch = true)
+            )
+        } else {
+            workManager.cancelUniqueWork(FetchyConstants.uniqueSyncWorkName)
+        }
     }
 
-    private fun scheduleImmediateSync(context: Context, reason: String, allowFeedFetch: Boolean) {
-        val request = OneTimeWorkRequestBuilder<FetchySyncWorker>()
+    private fun immediateSyncRequest(reason: String, allowFeedFetch: Boolean) =
+        OneTimeWorkRequestBuilder<FetchySyncWorker>()
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -164,13 +173,6 @@ object Fetchy {
                     .build()
             )
             .build()
-
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            FetchyConstants.uniqueSyncWorkName,
-            ExistingWorkPolicy.REPLACE,
-            request
-        )
-    }
 
     @Synchronized
     private fun prepareRuntime(context: Context, clientType: FetchyClientType): FetchyConfig {

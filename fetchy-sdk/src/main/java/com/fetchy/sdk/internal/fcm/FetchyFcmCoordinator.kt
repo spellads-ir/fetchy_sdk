@@ -32,8 +32,8 @@ internal object FetchyFcmCoordinator {
                 )
                 .build()
             WorkManager.getInstance(appContext).enqueueUniqueWork(
-                FetchyConstants.uniqueSyncWorkName,
-                ExistingWorkPolicy.REPLACE,
+                FetchyConstants.uniqueRegisterWorkName,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 request
             )
         }

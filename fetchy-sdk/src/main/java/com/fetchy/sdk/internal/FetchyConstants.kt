@@ -6,6 +6,7 @@ internal object FetchyConstants {
     const val foregroundPullIntervalMs = 60_000L
     const val notificationDedupeTtlMs = 48L * 60L * 60L * 1000L
     const val uniquePeriodicWorkName = "pn_notif_worker"
+    const val uniqueRegisterWorkName = "pn_register"
     const val uniqueSyncWorkName = "pn_notif_sync"
     const val databaseName = "pn_fetchy.db"
 
