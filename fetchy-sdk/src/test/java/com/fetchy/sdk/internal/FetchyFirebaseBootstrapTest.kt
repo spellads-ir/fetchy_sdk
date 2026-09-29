@@ -65,6 +65,35 @@ class FetchyFirebaseBootstrapTest {
     }
 
     @Test
+    fun usesApplicationIdWhenItIsAMobilesdkAppId() {
+        assertEquals(
+            "1:1:android:abc",
+            effectiveFirebaseApplicationId("1:1:android:abc", "1:2:android:def")
+        )
+    }
+
+    @Test
+    fun usesMobileSdkAppIdWhenApplicationIdIsAPackageName() {
+        assertEquals(
+            "1:2:android:def",
+            effectiveFirebaseApplicationId("com.example.app", "1:2:android:def")
+        )
+    }
+
+    @Test
+    fun skipsBootstrapWhenNeitherAppIdMatches() {
+        assertEquals(null, effectiveFirebaseApplicationId("com.example.app", "not-an-id"))
+        assertEquals(
+            "application_id",
+            invalidFirebaseApplicationIdField("com.example.app", "1:2:android:zz")
+        )
+        assertEquals(
+            "mobile_sdk_app_id",
+            invalidFirebaseApplicationIdField("", "com.example.app")
+        )
+    }
+
+    @Test
     fun missingFirebaseClassDoesNotEscape() {
         assertEquals(
             FirebaseBootstrapAction.SKIP,

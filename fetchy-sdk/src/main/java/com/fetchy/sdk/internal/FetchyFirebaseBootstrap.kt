@@ -62,9 +62,19 @@ private object FetchyFirebaseApps {
         )
         when (action) {
             FirebaseBootstrapAction.INITIALIZE -> {
+                val applicationId = effectiveFirebaseApplicationId(
+                    firebase?.applicationId.orEmpty(),
+                    firebase?.mobileSdkAppId.orEmpty()
+                )
                 val options = firebase.toFirebaseOptions()
-                if (options == null) {
-                    FetchyLog.e("firebase block is missing application_id or api_key; Firebase was not initialized")
+                if (applicationId == null) {
+                    FetchyLog.w(
+                        "firebase ${invalidFirebaseApplicationIdField(firebase?.applicationId.orEmpty(), firebase?.mobileSdkAppId.orEmpty())} " +
+                            "is not a mobilesdk app id; Firebase was not initialized"
+                    )
+                    action = FirebaseBootstrapAction.SKIP
+                } else if (options == null) {
+                    FetchyLog.e("firebase block is missing api_key; Firebase was not initialized")
                     action = FirebaseBootstrapAction.SKIP
                 } else {
                     FirebaseApp.initializeApp(context, options)
@@ -83,11 +93,31 @@ private object FetchyFirebaseApps {
     }
 }
 
+internal val mobilesdkApplicationId = Regex("""^\d+:\d+:android:[0-9a-f]+$""")
+
+internal fun effectiveFirebaseApplicationId(applicationId: String, mobileSdkAppId: String): String? {
+    for (candidate in listOf(applicationId, mobileSdkAppId)) {
+        val value = candidate.trim()
+        if (mobilesdkApplicationId.matches(value)) return value
+    }
+    return null
+}
+
+internal fun invalidFirebaseApplicationIdField(applicationId: String, mobileSdkAppId: String): String {
+    val application = applicationId.trim()
+    if (application.isNotEmpty() && !mobilesdkApplicationId.matches(application)) return "application_id"
+    val mobile = mobileSdkAppId.trim()
+    if (mobile.isNotEmpty() && !mobilesdkApplicationId.matches(mobile)) return "mobile_sdk_app_id"
+    return "application_id"
+}
+
 private fun FetchyFirebaseConfig?.toFirebaseOptions(): FirebaseOptions? {
     val firebase = this ?: return null
-    if (firebase.applicationId.isBlank() || firebase.apiKey.isBlank()) return null
+    val applicationId = effectiveFirebaseApplicationId(firebase.applicationId, firebase.mobileSdkAppId)
+        ?: return null
+    if (firebase.apiKey.isBlank()) return null
     val builder = FirebaseOptions.Builder()
-        .setApplicationId(firebase.applicationId)
+        .setApplicationId(applicationId)
         .setApiKey(firebase.apiKey)
     if (firebase.projectId.isNotBlank()) builder.setProjectId(firebase.projectId)
     if (firebase.gcmSenderId.isNotBlank()) builder.setGcmSenderId(firebase.gcmSenderId)

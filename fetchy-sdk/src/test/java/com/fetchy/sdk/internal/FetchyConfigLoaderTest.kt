@@ -41,6 +41,30 @@ class FetchyConfigLoaderTest {
     }
 
     @Test
+    fun readsMobileSdkAppIdWhenApplicationIdIsAPackageName() {
+        val config = FetchyConfigLoader.fromJson(
+            baseJson(
+                """
+                ,"firebase": {
+                  "application_id": "com.example.app",
+                  "mobile_sdk_app_id": "1:123:android:abc",
+                  "api_key": "key"
+                }
+                """.trimIndent()
+            )
+        )
+        assertEquals("com.example.app", config.firebase?.applicationId)
+        assertEquals("1:123:android:abc", config.firebase?.mobileSdkAppId)
+        assertEquals(
+            "1:123:android:abc",
+            effectiveFirebaseApplicationId(
+                config.firebase?.applicationId.orEmpty(),
+                config.firebase?.mobileSdkAppId.orEmpty()
+            )
+        )
+    }
+
+    @Test
     fun treatsABlankFirebaseBlockAsAbsent() {
         val config = FetchyConfigLoader.fromJson(
             baseJson(

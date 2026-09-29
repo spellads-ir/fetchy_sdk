@@ -27,6 +27,7 @@ internal data class FetchyConfig(
 internal data class FetchyFirebaseConfig(
     val projectId: String = "",
     val applicationId: String = "",
+    val mobileSdkAppId: String = "",
     val apiKey: String = "",
     val gcmSenderId: String = "",
     val storageBucket: String = ""
@@ -35,12 +36,14 @@ internal data class FetchyFirebaseConfig(
         val trimmed = copy(
             projectId = projectId.trim(),
             applicationId = applicationId.trim(),
+            mobileSdkAppId = mobileSdkAppId.trim(),
             apiKey = apiKey.trim(),
             gcmSenderId = gcmSenderId.trim(),
             storageBucket = storageBucket.trim()
         )
         val present = trimmed.projectId.isNotEmpty() ||
             trimmed.applicationId.isNotEmpty() ||
+            trimmed.mobileSdkAppId.isNotEmpty() ||
             trimmed.apiKey.isNotEmpty() ||
             trimmed.gcmSenderId.isNotEmpty() ||
             trimmed.storageBucket.isNotEmpty()

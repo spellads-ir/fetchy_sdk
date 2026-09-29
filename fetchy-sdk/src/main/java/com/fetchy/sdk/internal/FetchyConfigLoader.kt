@@ -37,6 +37,7 @@ internal object FetchyConfigLoader {
                 FetchyFirebaseConfig(
                     projectId = firebase.optString("project_id"),
                     applicationId = firebase.optString("application_id"),
+                    mobileSdkAppId = firebase.optString("mobile_sdk_app_id"),
                     apiKey = firebase.optString("api_key"),
                     gcmSenderId = firebase.optString("gcm_sender_id"),
                     storageBucket = firebase.optString("storage_bucket")
@@ -79,6 +80,7 @@ internal object FetchyConfigLoader {
                     JSONObject()
                         .put("project_id", firebase.projectId)
                         .put("application_id", firebase.applicationId)
+                        .put("mobile_sdk_app_id", firebase.mobileSdkAppId)
                         .put("api_key", firebase.apiKey)
                         .put("gcm_sender_id", firebase.gcmSenderId)
                         .put("storage_bucket", firebase.storageBucket)
