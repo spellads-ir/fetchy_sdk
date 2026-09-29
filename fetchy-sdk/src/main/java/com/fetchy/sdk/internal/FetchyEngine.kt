@@ -7,7 +7,11 @@ import com.fetchy.sdk.internal.model.FetchyNotificationPayload
 import com.fetchy.sdk.internal.model.RegisterTokenRequest
 import com.fetchy.sdk.internal.network.FetchyApiClient
 import com.fetchy.sdk.internal.notification.FetchyNotifier
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.messaging.FirebaseMessaging
 import java.io.IOException
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -31,15 +35,24 @@ internal class FetchyEngine(private val context: Context) {
         }
 
         val apiClient = FetchyApiClient(config.baseUrl)
+        val fcmTokenStatus = readFcmTokenStatus()
         val existingToken = repository.getBackendToken()?.takeIf { it.isNotBlank() }
         val registerRequest = repository.buildRegisterRequest(config).copy(
-            existingToken = existingToken
+            existingToken = existingToken,
+            fcmTokenStatus = fcmTokenStatus
         )
 
         val currentFingerprint = registerFingerprint(registerRequest)
         val backendToken: String
-        if (existingToken != null && currentFingerprint == repository.getRegisterFingerprint()) {
-            backendToken = existingToken
+        if (
+            !shouldRegisterDevice(
+                existingToken = existingToken,
+                fingerprint = currentFingerprint,
+                storedFingerprint = repository.getRegisterFingerprint(),
+                fcmToken = registerRequest.fcmToken
+            )
+        ) {
+            backendToken = existingToken!!
         } else {
             backendToken = registerTokenWithRecovery(apiClient, registerRequest)
             repository.saveBackendToken(backendToken)
@@ -107,11 +120,36 @@ internal class FetchyEngine(private val context: Context) {
             ?: repository.getNotificationByDedupeKey(payload.dedupeKey())
     }
 
+    private suspend fun readFcmTokenStatus(): String? {
+        return try {
+            val token = Tasks.await(FirebaseMessaging.getInstance().token, 10, TimeUnit.SECONDS)
+            if (token.isNullOrBlank()) {
+                FetchyLog.e("fcm token empty")
+                "unavailable"
+            } else {
+                if (token != repository.getFcmToken()) {
+                    repository.saveFcmToken(token)
+                    FetchyLog.i("fcm token updated ${FetchyLog.redact(token)}")
+                }
+                null
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: IllegalStateException) {
+            FetchyLog.e("firebase not initialized", error)
+            "unavailable"
+        } catch (error: Exception) {
+            FetchyLog.e("fcm token unavailable", error)
+            "unavailable"
+        }
+    }
+
     private fun registerFingerprint(request: RegisterTokenRequest): String =
         listOf(
             request.appApiKey,
             request.clientType,
             request.fcmToken.orEmpty(),
+            request.fcmTokenStatus.orEmpty(),
             request.deviceBrand,
             request.deviceModel,
             request.androidVersion,
@@ -141,6 +179,17 @@ internal class FetchyEngine(private val context: Context) {
             .maxOrNull()
         return maxCreatedAt ?: now
     }
+}
+
+internal fun shouldRegisterDevice(
+    existingToken: String?,
+    fingerprint: String,
+    storedFingerprint: String?,
+    fcmToken: String?
+): Boolean {
+    if (existingToken.isNullOrBlank()) return true
+    if (fingerprint != storedFingerprint) return true
+    return !fcmToken.isNullOrBlank()
 }
 
 internal object FetchyEngineProvider {

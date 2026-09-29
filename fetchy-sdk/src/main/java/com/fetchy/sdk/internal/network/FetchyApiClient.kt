@@ -33,6 +33,10 @@ internal class FetchyApiClient(
             .put("existing_token", request.existingToken.orEmpty())
             .put("client_type", request.clientType)
             .put("fcm_token", request.fcmToken.orEmpty())
+            .apply {
+                val status = request.fcmTokenStatus?.takeIf { it.isNotBlank() }
+                if (status != null) put("fcm_token_status", status)
+            }
             .put("device_brand", request.deviceBrand)
             .put("device_model", request.deviceModel)
             .put("android_version", request.androidVersion)

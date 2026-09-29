@@ -59,6 +59,7 @@ internal data class RegisterTokenRequest(
     val existingToken: String?,
     val clientType: String,
     val fcmToken: String? = null,
+    val fcmTokenStatus: String? = null,
     val deviceBrand: String,
     val deviceModel: String,
     val androidVersion: String,
