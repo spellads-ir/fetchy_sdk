@@ -10,6 +10,7 @@ import com.fetchy.sdk.internal.data.SpStateEntity
 import com.fetchy.sdk.internal.data.FetchyDatabase
 import com.fetchy.sdk.internal.model.RegisterTokenRequest
 import com.fetchy.sdk.internal.model.FetchyNotificationPayload
+import com.fetchy.sdk.internal.model.notificationExpiresAtEpochMs
 
 internal class FetchyRepository(private val context: Context) {
     private val database = FetchyDatabase.get(context)
@@ -84,7 +85,7 @@ internal class FetchyRepository(private val context: Context) {
     suspend fun getFcmToken(): String? = database.stateDao().getValue(FetchyConstants.stateFcmToken)
 
     suspend fun purgeExpiredNotifications(nowEpochMs: Long = System.currentTimeMillis()) {
-        database.notificationDao().deleteOlderThan(nowEpochMs - FetchyConstants.notificationDedupeTtlMs)
+        database.notificationDao().deleteExpired(nowEpochMs)
     }
 
     suspend fun getLastRetrieve(): Long {
@@ -115,10 +116,26 @@ internal class FetchyRepository(private val context: Context) {
             createdAtEpochMs = payload.createdAtEpochMs,
             receivedAtEpochMs = receivedAtEpochMs,
             displayedAtEpochMs = null,
-            openedAtEpochMs = null
+            openedAtEpochMs = null,
+            displayAttempts = 0,
+            expiresAtEpochMs = notificationExpiresAtEpochMs(receivedAtEpochMs, payload.endTimeEpochMs)
         )
         val insertId = database.notificationDao().insert(entity)
-        return if (insertId == -1L) null else database.notificationDao().getById(insertId)
+        if (insertId == -1L) {
+            val existing = database.notificationDao().getByDedupeKey(entity.dedupeKey)
+            if (existing != null && entity.expiresAtEpochMs > existing.expiresAtEpochMs) {
+                database.notificationDao().updateExpiresAt(existing.localId, entity.expiresAtEpochMs)
+            }
+            return null
+        }
+        return database.notificationDao().getById(insertId)
+    }
+
+    suspend fun pendingDisplayIds(): List<Long> =
+        database.notificationDao().pendingDisplayIds(FetchyConstants.maxDisplayAttempts)
+
+    suspend fun incrementDisplayAttempts(localId: Long) {
+        database.notificationDao().incrementDisplayAttempts(localId)
     }
 
     suspend fun getNotification(localId: Long): SpNotificationEntity? = database.notificationDao().getById(localId)

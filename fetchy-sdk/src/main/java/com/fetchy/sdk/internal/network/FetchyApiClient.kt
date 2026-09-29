@@ -130,7 +130,16 @@ internal class FetchyApiClient(
             source = FetchySource.PULL,
             scope = FetchyScope.EXCLUSIVE
         )
-        return FeedResponse(notifications = notifications, exclusiveNotifications = exclusiveNotifications)
+        val nextCursor = if (json.has("next_cursor") && !json.isNull("next_cursor")) {
+            json.getLong("next_cursor")
+        } else {
+            null
+        }
+        return FeedResponse(
+            notifications = notifications,
+            exclusiveNotifications = exclusiveNotifications,
+            nextCursor = nextCursor
+        )
     }
 
     private fun parseNotificationArray(
@@ -160,6 +169,7 @@ internal class FetchyApiClient(
                             appId = item.optLong("app_id").takeIf { it != 0L },
                             clickAckSignature = item.optString("click_ack_signature").takeIf { it.isNotBlank() },
                             createdAtEpochMs = item.optString("created_at").takeIf { it.isNotBlank() }?.let(::parseBackendTimestamp),
+                        endTimeEpochMs = item.optString("end_time").takeIf { it.isNotBlank() }?.let(::parseBackendTimestamp),
                             fetchyId = item.optString("fetchy_id").takeIf { it.isNotBlank() },
                             schemaVersion = item.optInt("schema_version").takeIf { it != 0 },
                             runId = item.optLong("run_id").takeIf { it != 0L },

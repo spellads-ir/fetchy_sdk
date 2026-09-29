@@ -2,9 +2,9 @@
 
 import android.os.SystemClock
 import android.content.Context
-import com.fetchy.sdk.internal.data.SpNotificationEntity
 import com.fetchy.sdk.internal.model.FetchyNotificationPayload
 import com.fetchy.sdk.internal.model.RegisterTokenRequest
+import com.fetchy.sdk.internal.model.selectFeedCursor
 import com.fetchy.sdk.internal.network.FetchyApiClient
 import com.fetchy.sdk.internal.notification.FetchyNotifier
 import com.google.android.gms.tasks.Tasks
@@ -61,34 +61,28 @@ internal class FetchyEngine(private val context: Context) {
 
         repository.purgeExpiredNotifications()
 
-        if (!config.pull.enabled || !config.pull.workerEnabled || !allowFeedFetch) {
-            return@withLock
-        }
-
+        val fetchFeed = config.pull.enabled && config.pull.workerEnabled && allowFeedFetch
         val nowElapsed = SystemClock.elapsedRealtime()
-        if (
-            lastFeedFetchCompletedAtElapsedMs > 0L &&
+        val rateLimited = lastFeedFetchCompletedAtElapsedMs > 0L &&
             nowElapsed - lastFeedFetchCompletedAtElapsedMs < MIN_FEED_FETCH_INTERVAL_MS
-        ) {
-            return@withLock
-        }
-
-        val lastRetrieve = repository.getLastRetrieve()
-        val feedResponse = apiClient.getFeed(backendToken, lastRetrieve)
-        val receivedAt = System.currentTimeMillis()
-        lastFeedFetchCompletedAtElapsedMs = SystemClock.elapsedRealtime()
-        val fetchedNotifications = feedResponse.notifications + feedResponse.exclusiveNotifications
-        var failedDisplayCount = 0
-
-        fetchedNotifications.forEach { payload ->
-            if (!ingestPayload(payload, config, receivedAt)) {
-                failedDisplayCount += 1
+        if (fetchFeed && !rateLimited) {
+            val lastRetrieve = repository.getLastRetrieve()
+            val feedResponse = apiClient.getFeed(backendToken, lastRetrieve)
+            val receivedAt = System.currentTimeMillis()
+            lastFeedFetchCompletedAtElapsedMs = SystemClock.elapsedRealtime()
+            (feedResponse.notifications + feedResponse.exclusiveNotifications).forEach { payload ->
+                repository.persistNotification(payload, receivedAt)
             }
+            repository.saveLastRetrieve(
+                selectFeedCursor(
+                    nextCursor = feedResponse.nextCursor,
+                    notifications = feedResponse.notifications,
+                    exclusiveNotifications = feedResponse.exclusiveNotifications,
+                    nowEpochMs = receivedAt
+                )
+            )
         }
-
-        if (failedDisplayCount == 0) {
-            repository.saveLastRetrieve(computeNextCursor(feedResponse, receivedAt))
-        }
+        displayPending(config)
         }
     }
 
@@ -96,28 +90,25 @@ internal class FetchyEngine(private val context: Context) {
         syncMutex.withLock {
             repository.purgeExpiredNotifications()
             val config = repository.getConfig() ?: return@withLock
-            ingestPayload(payload, config, System.currentTimeMillis())
+            repository.persistNotification(payload, System.currentTimeMillis())
+            displayPending(config)
         }
     }
 
-    private suspend fun ingestPayload(
-        payload: FetchyNotificationPayload,
-        config: FetchyConfig,
-        receivedAtEpochMs: Long
-    ): Boolean {
-        val entity = resolveNotificationEntity(payload, receivedAtEpochMs) ?: return false
-        if (entity.displayedAtEpochMs != null) {
-            return true
+    private suspend fun displayPending(config: FetchyConfig) {
+        repository.pendingDisplayIds().forEach { localId ->
+            val shown = try {
+                notifier.showNotification(localId, config)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                FetchyLog.e("display failed localId=$localId", error)
+                false
+            }
+            if (!shown) {
+                repository.incrementDisplayAttempts(localId)
+            }
         }
-        return notifier.showNotification(entity.localId, config)
-    }
-
-    private suspend fun resolveNotificationEntity(
-        payload: FetchyNotificationPayload,
-        receivedAtEpochMs: Long
-    ): SpNotificationEntity? {
-        return repository.persistNotification(payload, receivedAtEpochMs)
-            ?: repository.getNotificationByDedupeKey(payload.dedupeKey())
     }
 
     private suspend fun readFcmTokenStatus(): String? {
@@ -173,12 +164,6 @@ internal class FetchyEngine(private val context: Context) {
         }
     }
 
-    private fun computeNextCursor(feedResponse: com.fetchy.sdk.internal.model.FeedResponse, now: Long): Long {
-        val maxCreatedAt = (feedResponse.notifications + feedResponse.exclusiveNotifications)
-            .mapNotNull { it.createdAtEpochMs }
-            .maxOrNull()
-        return maxCreatedAt ?: now
-    }
 }
 
 internal fun shouldRegisterDevice(

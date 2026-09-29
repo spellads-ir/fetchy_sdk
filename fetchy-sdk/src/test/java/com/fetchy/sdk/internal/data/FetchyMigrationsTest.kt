@@ -77,6 +77,35 @@ class FetchyMigrationsTest {
     }
 
     @Test
+    fun backfillsExpiryFromReceivedAt() {
+        connection.createStatement().use { statement ->
+            statement.execute("ALTER TABLE pn_notifications ADD COLUMN receivedAtEpochMs INTEGER NOT NULL DEFAULT 0")
+            statement.execute("UPDATE pn_notifications SET receivedAtEpochMs = 0")
+        }
+        insert(
+            dedupeKey = "broadcast:1",
+            scope = "BROADCAST",
+            remoteId = 1,
+            displayedAt = 5L
+        )
+        connection.createStatement().use { statement ->
+            statement.execute("UPDATE pn_notifications SET receivedAtEpochMs = 1000")
+            statement.execute(FetchyMigrations.ADD_DISPLAY_ATTEMPTS)
+            statement.execute(FetchyMigrations.ADD_EXPIRES_AT)
+            statement.execute(FetchyMigrations.BACKFILL_EXPIRES_AT)
+        }
+        connection.createStatement().use { statement ->
+            statement.executeQuery(
+                "SELECT displayAttempts, expiresAtEpochMs FROM pn_notifications WHERE dedupeKey = 'broadcast:1'"
+            ).use { rows ->
+                assertEquals(true, rows.next())
+                assertEquals(0, rows.getInt(1))
+                assertEquals(1000L + 48L * 60L * 60L * 1000L, rows.getLong(2))
+            }
+        }
+    }
+
+    @Test
     fun leavesLegacyRowsWithoutARemoteId() {
         insert(
             dedupeKey = "PULL::BROADCAST::na::t::b::::na",

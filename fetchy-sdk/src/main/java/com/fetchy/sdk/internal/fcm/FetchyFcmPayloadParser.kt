@@ -32,6 +32,7 @@ internal object FetchyFcmPayloadParser {
             appId = data["app_id"]?.toLongOrNull()?.takeIf { it != 0L },
             clickAckSignature = data["click_ack_signature"]?.takeIf { it.isNotBlank() },
             runId = data["run_id"]?.toLongOrNull()?.takeIf { it != 0L },
+            endTimeEpochMs = data["end_time"]?.toLongOrNull()?.takeIf { it != 0L },
             pushScheduleType = data["push_schedule_type"]?.takeIf { it.isNotBlank() }
         )
     }

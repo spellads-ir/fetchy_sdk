@@ -133,6 +133,53 @@ class FetchyApiClientTest {
     }
 
     @Test
+    fun getFeed_readsNextCursorAndEndTime() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "notifications": [
+                    {
+                      "id": 3,
+                      "title": "timed",
+                      "body": "b",
+                      "created_at": "2026-05-03T11:00:00Z",
+                      "end_time": "2026-05-04T11:00:00Z",
+                      "push_schedule_type": "recurring",
+                      "run_id": 9
+                    }
+                  ],
+                  "next_cursor": 1700000000000
+                }
+                """.trimIndent()
+            )
+        )
+
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        val feed = client.getFeed(token = "backend-token", lastRetrieve = 0)
+        assertEquals(1_700_000_000_000L, feed.nextCursor)
+        assertEquals("broadcast:3:9", feed.notifications.single().dedupeKey())
+        assertEquals(
+            feed.notifications.single().createdAtEpochMs!! + 24L * 60L * 60L * 1000L,
+            feed.notifications.single().endTimeEpochMs
+        )
+    }
+
+    @Test
+    fun getFeed_leavesNextCursorNullWhenTheBackendOmitsIt() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"notifications":[{"id":1,"title":"t","body":"b","created_at":"2026-05-03T11:00:00Z"}]}
+                """.trimIndent()
+            )
+        )
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        val feed = client.getFeed(token = "backend-token", lastRetrieve = 0)
+        assertEquals(null, feed.nextCursor)
+    }
+
+    @Test
     fun registerToken_includesFcmToken() {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":"device-1"}"""))
 

@@ -44,7 +44,9 @@ internal data class SpNotificationEntity(
     val createdAtEpochMs: Long?,
     val receivedAtEpochMs: Long,
     val displayedAtEpochMs: Long?,
-    val openedAtEpochMs: Long?
+    val openedAtEpochMs: Long?,
+    val displayAttempts: Int = 0,
+    val expiresAtEpochMs: Long = 0
 )
 
 @Entity(tableName = "pn_ack_records")
@@ -83,8 +85,20 @@ internal interface SpNotificationDao {
     @Query("UPDATE pn_notifications SET openedAtEpochMs = :openedAt WHERE localId = :localId")
     suspend fun markOpened(localId: Long, openedAt: Long)
 
-    @Query("DELETE FROM pn_notifications WHERE receivedAtEpochMs < :cutoffEpochMs")
-    suspend fun deleteOlderThan(cutoffEpochMs: Long)
+    @Query("DELETE FROM pn_notifications WHERE expiresAtEpochMs > 0 AND expiresAtEpochMs <= :nowEpochMs")
+    suspend fun deleteExpired(nowEpochMs: Long)
+
+    @Query(
+        "SELECT localId FROM pn_notifications " +
+            "WHERE displayedAtEpochMs IS NULL AND displayAttempts < :maxAttempts"
+    )
+    suspend fun pendingDisplayIds(maxAttempts: Int): List<Long>
+
+    @Query("UPDATE pn_notifications SET displayAttempts = displayAttempts + 1 WHERE localId = :localId")
+    suspend fun incrementDisplayAttempts(localId: Long)
+
+    @Query("UPDATE pn_notifications SET expiresAtEpochMs = :expiresAtEpochMs WHERE localId = :localId")
+    suspend fun updateExpiresAt(localId: Long, expiresAtEpochMs: Long)
 
     @Query("DELETE FROM pn_notifications")
     suspend fun clearAll()
@@ -102,7 +116,7 @@ internal interface SpAckDao {
         SpNotificationEntity::class,
         SpAckRecordEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 internal abstract class FetchyDatabase : RoomDatabase() {
@@ -121,7 +135,7 @@ internal abstract class FetchyDatabase : RoomDatabase() {
                     FetchyDatabase::class.java,
                     FetchyConstants.databaseName
                 )
-                    .addMigrations(FetchyMigrations.MIGRATION_5_6)
+                    .addMigrations(FetchyMigrations.MIGRATION_5_6, FetchyMigrations.MIGRATION_6_7)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                     .also { instance = it }

@@ -1,5 +1,7 @@
 ﻿package com.fetchy.sdk.internal.model
 
+import com.fetchy.sdk.internal.FetchyConstants
+
 internal enum class FetchySource {
     PULL,
     PUSH
@@ -29,6 +31,7 @@ internal data class FetchyNotificationPayload(
     val appId: Long? = null,
     val clickAckSignature: String? = null,
     val createdAtEpochMs: Long? = null,
+    val endTimeEpochMs: Long? = null,
     val fetchyId: String? = null,
     val schemaVersion: Int? = null,
     val runId: Long? = null,
@@ -78,5 +81,25 @@ internal data class AckLinkRequest(
 
 internal data class FeedResponse(
     val notifications: List<FetchyNotificationPayload>,
-    val exclusiveNotifications: List<FetchyNotificationPayload>
+    val exclusiveNotifications: List<FetchyNotificationPayload>,
+    val nextCursor: Long? = null
 )
+
+internal fun selectFeedCursor(
+    nextCursor: Long?,
+    notifications: List<FetchyNotificationPayload>,
+    exclusiveNotifications: List<FetchyNotificationPayload>,
+    nowEpochMs: Long
+): Long {
+    if (nextCursor != null) return nextCursor
+    val maxCreatedAt = (notifications + exclusiveNotifications)
+        .mapNotNull { it.createdAtEpochMs }
+        .maxOrNull()
+    return maxCreatedAt ?: nowEpochMs
+}
+
+internal fun notificationExpiresAtEpochMs(receivedAtEpochMs: Long, endTimeEpochMs: Long?): Long {
+    val fromReceived = receivedAtEpochMs + FetchyConstants.notificationDedupeTtlMs
+    val fromEnd = endTimeEpochMs?.plus(FetchyConstants.notificationEndGraceMs) ?: fromReceived
+    return maxOf(fromReceived, fromEnd)
+}

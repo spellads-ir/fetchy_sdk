@@ -34,4 +34,23 @@ internal object FetchyMigrations {
             db.execSQL(DELETE_DUPLICATE_LEGACY_KEYS)
         }
     }
+
+    const val ADD_DISPLAY_ATTEMPTS = """
+        ALTER TABLE pn_notifications ADD COLUMN displayAttempts INTEGER NOT NULL DEFAULT 0
+    """
+
+    const val ADD_EXPIRES_AT = """
+        ALTER TABLE pn_notifications ADD COLUMN expiresAtEpochMs INTEGER NOT NULL DEFAULT 0
+    """
+
+    val BACKFILL_EXPIRES_AT =
+        "UPDATE pn_notifications SET expiresAtEpochMs = receivedAtEpochMs + ${com.fetchy.sdk.internal.FetchyConstants.notificationDedupeTtlMs}"
+
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(ADD_DISPLAY_ATTEMPTS)
+            db.execSQL(ADD_EXPIRES_AT)
+            db.execSQL(BACKFILL_EXPIRES_AT)
+        }
+    }
 }
