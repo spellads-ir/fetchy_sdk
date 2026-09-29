@@ -90,7 +90,12 @@ internal class FetchyEngine(private val context: Context) {
                 exclusiveAck = encoded.exclusiveAck,
                 delivered = encoded.delivered
             )
-            repository.deletePendingReports(pendingReportIdsToDelete(true, encoded.includedLocalIds))
+            repository.deletePendingReports(
+                pendingReportIdsToDelete(
+                    succeeded = !feedResponse.hadUnparseableItems,
+                    includedLocalIds = encoded.includedLocalIds
+                )
+            )
             val receivedAt = System.currentTimeMillis()
             lastFeedFetchCompletedAtElapsedMs = SystemClock.elapsedRealtime()
             (feedResponse.notifications + feedResponse.exclusiveNotifications).forEach { payload ->

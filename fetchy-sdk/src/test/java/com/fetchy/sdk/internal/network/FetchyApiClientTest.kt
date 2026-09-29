@@ -1,5 +1,6 @@
 ﻿package com.fetchy.sdk.internal.network
 
+import com.fetchy.sdk.internal.pendingReportIdsToDelete
 import com.fetchy.sdk.internal.model.AckLinkRequest
 import com.fetchy.sdk.internal.model.FetchyScope
 import com.fetchy.sdk.internal.model.FetchySource
@@ -130,6 +131,24 @@ class FetchyApiClientTest {
         assertEquals("good", feed.notifications[0].title)
         assertEquals(1, feed.exclusiveNotifications.size)
         assertEquals(10L, feed.exclusiveNotifications[0].remoteNotificationId)
+        assertEquals(true, feed.hadUnparseableItems)
+    }
+
+    @Test
+    fun getFeed_marksAGarbageBodyUnparseable() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"notifications":[{"created_at":"garbage"}]}"""
+            )
+        )
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        val feed = client.getFeed(token = "backend-token", lastRetrieve = 0)
+        assertEquals(0, feed.notifications.size)
+        assertEquals(true, feed.hadUnparseableItems)
+        assertEquals(
+            emptyList<Long>(),
+            pendingReportIdsToDelete(!feed.hadUnparseableItems, listOf(4L, 5L))
+        )
     }
 
     @Test

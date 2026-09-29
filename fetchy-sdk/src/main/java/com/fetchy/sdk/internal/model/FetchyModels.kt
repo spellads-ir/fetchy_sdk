@@ -82,7 +82,8 @@ internal data class AckLinkRequest(
 internal data class FeedResponse(
     val notifications: List<FetchyNotificationPayload>,
     val exclusiveNotifications: List<FetchyNotificationPayload>,
-    val nextCursor: Long? = null
+    val nextCursor: Long? = null,
+    val hadUnparseableItems: Boolean = false
 )
 
 internal fun selectFeedCursor(

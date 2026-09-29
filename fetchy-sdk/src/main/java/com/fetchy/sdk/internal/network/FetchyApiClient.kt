@@ -146,19 +146,26 @@ internal class FetchyApiClient(
             null
         }
         return FeedResponse(
-            notifications = notifications,
-            exclusiveNotifications = exclusiveNotifications,
-            nextCursor = nextCursor
+            notifications = notifications.items,
+            exclusiveNotifications = exclusiveNotifications.items,
+            nextCursor = nextCursor,
+            hadUnparseableItems = notifications.hadUnparseable || exclusiveNotifications.hadUnparseable
         )
     }
+
+    private data class ParsedNotifications(
+        val items: List<FetchyNotificationPayload>,
+        val hadUnparseable: Boolean
+    )
 
     private fun parseNotificationArray(
         array: JSONArray?,
         source: FetchySource,
         scope: FetchyScope
-    ): List<FetchyNotificationPayload> {
-        if (array == null) return emptyList()
-        return buildList(array.length()) {
+    ): ParsedNotifications {
+        if (array == null) return ParsedNotifications(emptyList(), false)
+        var hadUnparseable = false
+        val items = buildList(array.length()) {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
                 try {
@@ -189,10 +196,12 @@ internal class FetchyApiClient(
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (error: Exception) {
+                    hadUnparseable = true
                     FetchyLog.e("skipping unparseable feed item at index $index", error)
                 }
             }
         }
+        return ParsedNotifications(items, hadUnparseable)
     }
 
     private fun parseApiError(body: String, code: Int): String {
