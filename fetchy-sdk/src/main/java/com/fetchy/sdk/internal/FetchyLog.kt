@@ -13,6 +13,10 @@ internal object FetchyLog {
         write(Log.ERROR, FetchyLogLevel.ERROR, message, error)
     }
 
+    fun w(message: String) {
+        write(Log.WARN, FetchyLogLevel.ERROR, message, null)
+    }
+
     fun i(message: String) {
         write(Log.INFO, FetchyLogLevel.INFO, message, null)
     }

@@ -37,12 +37,14 @@ internal class FetchyEngine(private val context: Context) {
         }
 
         val apiClient = FetchyApiClient(config.baseUrl)
-        val fcmTokenStatus = readFcmTokenStatus()
+        val suppressForeignProject = FetchyFirebaseGate.action == FirebaseBootstrapAction.PROJECT_MISMATCH
+        val fcmTokenStatus = if (suppressForeignProject) "project_mismatch" else readFcmTokenStatus()
         val existingToken = repository.getBackendToken()?.takeIf { it.isNotBlank() }
-        val registerRequest = repository.buildRegisterRequest(config).copy(
+        val builtRequest = repository.buildRegisterRequest(config).copy(
             existingToken = existingToken,
             fcmTokenStatus = fcmTokenStatus
         )
+        val registerRequest = if (suppressForeignProject) builtRequest.copy(fcmToken = null) else builtRequest
 
         val currentFingerprint = registerFingerprint(registerRequest)
         val nowEpochMs = System.currentTimeMillis()

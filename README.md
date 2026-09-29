@@ -164,7 +164,17 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 
 ## 7.1) Firebase Cloud Messaging
 
-SDK خودش `FetchyFirebaseMessagingService` را register می‌کند و توکن FCM را به `/tokens/register` می‌فرستد. اپ میزبان باید `google-services.json` را داشته باشد و plugin `com.google.gms.google-services` را روی ماژول app اعمال کند.
+SDK 1.6.0 خودش Firebase را راه می‌اندازد، `FetchyFirebaseMessagingService` را register می‌کند و توکن FCM را به `/tokens/register` می‌فرستد.
+
+در `fetchy-config.json` یک بلوک اختیاری `firebase` می‌تواند باشد. فیلدهایش همان‌هایی است که دانلود کانفیگ پنل می‌دهد: `project_id`، `application_id`، `api_key`، `gcm_sender_id`، `storage_bucket`.
+
+موقع `initialize` سه حالت بررسی می‌شود:
+
+1. اگر اپ هنوز `FirebaseApp` پیش‌فرض نداشته باشد و بلوک `firebase` پر باشد، SDK با `FirebaseApp.initializeApp` همان پروژه را می‌سازد. برای اپ‌هایی که Firebase را Fetchy مدیریت می‌کند، میزبان به `google-services.json` و plugin `com.google.gms.google-services` نیاز ندارد.
+2. اگر `FirebaseApp` پیش‌فرض از قبل باشد و `projectId` آن با `firebase.project_id` یکی باشد، SDK همان اپ را استفاده می‌کند.
+3. اگر `FirebaseApp` پیش‌فرض پروژهٔ دیگری باشد، توکن آن آپلود نمی‌شود. ثبت دستگاه با `fcm_token_status=project_mismatch` انجام می‌شود و یک WARN در لاگ نوشته می‌شود. پوش Fetchy با آن توکن کار نمی‌کند و تحویل از مسیر pull ادامه دارد. `project_mismatch` یعنی پروژهٔ Firebase پیش‌فرض اپ با پروژهٔ داخل `fetchy-config.json` یکی نیست.
+
+اگر بلوک `firebase` نباشد و میزبان خودش `google-services.json` همان پروژه را گذاشته باشد، رفتار قبلی حفظ می‌شود. خطاهای این راه‌اندازی، از جمله نبودن کلاس Firebase در زمان اجرا، داخل SDK گرفته می‌شوند و اپ میزبان را نمی‌بندند.
 
 پیام‌های FCM باید **data-only** باشند (بدون بلوک `notification`) تا SDK بتواند نمایش و dedup را خودش انجام دهد.
 
@@ -195,7 +205,7 @@ Fetchy.setLogLevel(FetchyLogLevel.DEBUG) // یا INFO یا ERROR
 Fetchy.initialize(this)
 ```
 
-مقادیر: `NONE` (پیش‌فرض)، `ERROR`، `INFO`، `DEBUG`. تگ Logcat برابر `Fetchy` است. توکن‌ها فقط ۸ کاراکتر اول به‌اضافه `…` لاگ می‌شوند. در نسخه Release سطح را `NONE` یا `ERROR` بگذارید.
+مقادیر: `NONE` (پیش‌فرض)، `ERROR`، `INFO`، `DEBUG`. تگ Logcat برابر `Fetchy` است. توکن‌ها فقط ۸ کاراکتر اول به‌اضافه `…` لاگ می‌شوند. ناسازگاری پروژه با اولویت WARN نوشته می‌شود و وقتی سطح لاگ `ERROR` یا بالاتر باشد دیده می‌شود. در نسخه Release سطح را `NONE` یا `ERROR` بگذارید.
 
 ### ارتقا از ۱.۳ یا ۱.۴
 
@@ -244,7 +254,7 @@ val token = Fetchy.getToken(context)
 - [ ] `base_url` و `api_key` معتبر هستند
 - [ ] `Application` سفارشی ساخته و در Manifest معرفی شده
 - [ ] permissionها در Manifest و Runtime تنظیم شده‌اند
-- [ ] `google-services.json` و plugin گوگل روی app module اضافه شده‌اند
+- [ ] برای اپ Fetchy-managed بلوک `firebase` در `fetchy-config.json` هست. `google-services.json` فقط وقتی لازم است که میزبان پروژهٔ Firebase دیگری را خودش راه انداخته باشد و آن پروژه با Fetchy یکی باشد
 - [ ] نوتیف تستی دریافت شده است
 
 ---

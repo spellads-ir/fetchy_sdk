@@ -8,6 +8,7 @@ internal data class FetchyConfig(
     val baseUrl: String,
     val pull: FetchyPullConfig = FetchyPullConfig(),
     val push: FetchyPushConfig = FetchyPushConfig(),
+    val firebase: FetchyFirebaseConfig? = null,
     val externalUserId: String? = null,
     val notification: FetchyNotificationConfig = FetchyNotificationConfig(),
     val environment: String = "production"
@@ -17,8 +18,33 @@ internal data class FetchyConfig(
             apiKey = apiKey.trim(),
             baseUrl = baseUrl.trim().trimEnd('/'),
             pull = pull.normalized(),
+            firebase = firebase?.normalized(),
             notification = notification.normalized()
         )
+    }
+}
+
+internal data class FetchyFirebaseConfig(
+    val projectId: String = "",
+    val applicationId: String = "",
+    val apiKey: String = "",
+    val gcmSenderId: String = "",
+    val storageBucket: String = ""
+) {
+    fun normalized(): FetchyFirebaseConfig? {
+        val trimmed = copy(
+            projectId = projectId.trim(),
+            applicationId = applicationId.trim(),
+            apiKey = apiKey.trim(),
+            gcmSenderId = gcmSenderId.trim(),
+            storageBucket = storageBucket.trim()
+        )
+        val present = trimmed.projectId.isNotEmpty() ||
+            trimmed.applicationId.isNotEmpty() ||
+            trimmed.apiKey.isNotEmpty() ||
+            trimmed.gcmSenderId.isNotEmpty() ||
+            trimmed.storageBucket.isNotEmpty()
+        return trimmed.takeIf { present }
     }
 }
 

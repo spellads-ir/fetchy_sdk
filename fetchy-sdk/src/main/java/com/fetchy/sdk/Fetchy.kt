@@ -12,6 +12,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.fetchy.sdk.internal.FetchyConfig
 import com.fetchy.sdk.internal.FetchyConfigLoader
+import com.fetchy.sdk.internal.FetchyFirebaseBootstrap
 import com.fetchy.sdk.internal.FetchyConstants
 import com.fetchy.sdk.internal.FetchyForegroundPoller
 import com.fetchy.sdk.internal.FetchyRepositoryProvider
@@ -183,6 +184,7 @@ object Fetchy {
         runtimeClientType = clientType
         return runtimeConfig ?: FetchyConfigLoader.fromAsset(context).also { config ->
             runtimeConfig = config
+            FetchyFirebaseBootstrap.apply(context, config.firebase)
             FetchyNotifier(context).ensureChannel(config)
         }
     }
@@ -207,6 +209,11 @@ object Fetchy {
     }
 
     private fun refreshFcmToken(context: Context) {
+        if (com.fetchy.sdk.internal.FetchyFirebaseGate.action ==
+            com.fetchy.sdk.internal.FirebaseBootstrapAction.PROJECT_MISMATCH
+        ) {
+            return
+        }
         try {
             com.google.firebase.messaging.FirebaseMessaging.getInstance().token
                 .addOnSuccessListener { token ->
@@ -214,8 +221,8 @@ object Fetchy {
                         com.fetchy.sdk.internal.fcm.FetchyFcmCoordinator.saveTokenAndSync(context, token)
                     }
                 }
-        } catch (_: Exception) {
-            // Host app may not have initialized Firebase yet.
+        } catch (_: Throwable) {
+            // Missing Firebase class, or the host has not initialized Firebase yet.
         }
     }
 

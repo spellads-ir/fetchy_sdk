@@ -6,7 +6,7 @@
 }
 
 group = "com.fetchy"
-version = "1.5.0"
+version = "1.6.0"
 
 android {
     namespace = "com.fetchy.sdk"
@@ -45,7 +45,7 @@ android {
     }
 
     buildTypes.all {
-        buildConfigField("String", "FETCHY_SDK_VERSION", "\"1.5.0\"")
+        buildConfigField("String", "FETCHY_SDK_VERSION", "\"1.6.0\"")
     }
 }
 

@@ -13,6 +13,7 @@ internal object FetchyConfigLoader {
         val root = JSONObject(json)
         val pullJson = root.optJSONObject("pull")
         val pushJson = root.optJSONObject("push")
+        val firebaseJson = root.optJSONObject("firebase")
         val notificationJson = root.optJSONObject("notification")
 
         return FetchyConfig(
@@ -32,6 +33,15 @@ internal object FetchyConfigLoader {
             push = FetchyPushConfig(
                 enabled = pushJson?.optBoolean("enabled", true) ?: true
             ),
+            firebase = firebaseJson?.let { firebase ->
+                FetchyFirebaseConfig(
+                    projectId = firebase.optString("project_id"),
+                    applicationId = firebase.optString("application_id"),
+                    apiKey = firebase.optString("api_key"),
+                    gcmSenderId = firebase.optString("gcm_sender_id"),
+                    storageBucket = firebase.optString("storage_bucket")
+                )
+            },
             notification = FetchyNotificationConfig(
                 channelId = notificationJson?.optString("channel_id", "pn_notification_channel")
                     ?: "pn_notification_channel",
@@ -62,6 +72,18 @@ internal object FetchyConfigLoader {
                 "push",
                 JSONObject().put("enabled", config.push.enabled)
             )
+            .apply {
+                val firebase = config.firebase ?: return@apply
+                put(
+                    "firebase",
+                    JSONObject()
+                        .put("project_id", firebase.projectId)
+                        .put("application_id", firebase.applicationId)
+                        .put("api_key", firebase.apiKey)
+                        .put("gcm_sender_id", firebase.gcmSenderId)
+                        .put("storage_bucket", firebase.storageBucket)
+                )
+            }
             .put(
                 "notification",
                 JSONObject()

@@ -1,7 +1,10 @@
 package com.fetchy.sdk.internal.fcm
 
 import android.content.Context
+import com.fetchy.sdk.internal.FetchyFirebaseGate
+import com.fetchy.sdk.internal.FetchyLog
 import com.fetchy.sdk.internal.FetchyRepositoryProvider
+import com.fetchy.sdk.internal.FirebaseBootstrapAction
 import com.fetchy.sdk.internal.work.FetchySyncWorker
 import androidx.work.Constraints
 import androidx.work.Data
@@ -15,6 +18,13 @@ import kotlinx.coroutines.launch
 
 internal object FetchyFcmCoordinator {
     fun saveTokenAndSync(context: Context, token: String) {
+        if (FetchyFirebaseGate.action == FirebaseBootstrapAction.PROJECT_MISMATCH) {
+            FetchyLog.w(
+                "ignoring FCM token because the default Firebase project does not match " +
+                    "fetchy-config.json (fcm_token_status=project_mismatch)"
+            )
+            return
+        }
         val appContext = context.applicationContext
         FetchyScope.launch {
             FetchyRepositoryProvider.get(appContext).saveFcmToken(token)

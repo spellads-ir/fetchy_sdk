@@ -230,4 +230,30 @@ class FetchyApiClientTest {
         val body = server.takeRequest().body.readUtf8()
         assertTrue(body.contains("\"fcm_token_status\":\"unavailable\""))
     }
+
+    @Test
+    fun registerToken_sendsProjectMismatchWithoutAToken() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":"device-1"}"""))
+
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        client.registerToken(
+            RegisterTokenRequest(
+                appApiKey = "api-key",
+                existingToken = "device-1",
+                clientType = "android_native",
+                fcmToken = null,
+                fcmTokenStatus = "project_mismatch",
+                deviceBrand = "Google",
+                deviceModel = "Pixel",
+                androidVersion = "14",
+                androidApiLevel = 34,
+                appVersion = "1.0",
+                sdkVersion = "1.6.0"
+            )
+        )
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"fcm_token\":\"\""))
+        assertTrue(body.contains("\"fcm_token_status\":\"project_mismatch\""))
+    }
 }
