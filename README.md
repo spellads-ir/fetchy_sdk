@@ -168,7 +168,7 @@ SDK خودش `FetchyFirebaseMessagingService` را register می‌کند و ت�
 
 پیام‌های FCM باید **data-only** باشند (بدون بلوک `notification`) تا SDK بتواند نمایش و dedup را خودش انجام دهد.
 
-اگر اپ شما از قبل `FirebaseMessagingService` دارد، رویدادها را به SDK forward کنید:
+اگر اپ شما از قبل `FirebaseMessagingService` دارد، رویدادها را به SDK forward کنید. فقط پیام‌های Fetchy را بفرستید تا پیام‌های خود اپ قاطی نشود:
 
 ```kotlin
 override fun onNewToken(token: String) {
@@ -176,11 +176,30 @@ override fun onNewToken(token: String) {
 }
 
 override fun onMessageReceived(message: RemoteMessage) {
-    Fetchy.handleRemoteMessage(this, message.data)
+    if (Fetchy.isFetchyMessage(message.data)) {
+        Fetchy.handleRemoteMessage(this, message.data)
+    }
 }
 ```
 
-یک notification ممکن است هم از FCM و هم از pull برسد. SDK با کلید پایدار (`broadcast:{id}` یا `exclusive:{id}` و برای recurring `broadcast:{id}:{run_id}`) duplicate را تا ۴۸ ساعت حذف می‌کند.
+`Fetchy.isFetchyMessage` وقتی `data["_fetchy"]` برابر `"1"` باشد true است. برای پیام‌هایی که هنوز این فیلد را ندارند (بک‌اند قبل از فاز ۳) اگر هر دو کلید `notification_id` و `scope` وجود داشته باشند هم true است.
+
+یک notification ممکن است هم از FCM و هم از pull برسد. SDK با کلید پایدار (`broadcast:{id}` یا `exclusive:{id}` و برای recurring `broadcast:{id}:{run_id}`) duplicate را حذف می‌کند. ردیف dedupe حداقل ۴۸ ساعت می‌ماند و اگر `end_time` دیرتر باشد تا یک ساعت بعد از آن هم نگه داشته می‌شود. سرور ممکن است همان آیتم را دوباره بفرستد؛ نمایش تکراری از همین کلید جلوگیری می‌شود.
+
+### لاگ
+
+پیش‌فرض SDK هیچ لاگی نمی‌نویسد. برای دیباگ:
+
+```kotlin
+Fetchy.setLogLevel(FetchyLogLevel.DEBUG) // یا INFO یا ERROR
+Fetchy.initialize(this)
+```
+
+مقادیر: `NONE` (پیش‌فرض)، `ERROR`، `INFO`، `DEBUG`. تگ Logcat برابر `Fetchy` است. توکن‌ها فقط ۸ کاراکتر اول به‌اضافه `…` لاگ می‌شوند. در نسخه Release سطح را `NONE` یا `ERROR` بگذارید.
+
+### ارتقا از ۱.۳ یا ۱.۴
+
+SDK 1.5.0 پایگاه محلی را پاک نمی‌کند. ارتقا با `adb install -r` یا به‌روزرسانی استور همان توکن دستگاه را نگه می‌دارد و نوتیفیکیشن قبلی را دوباره نشان نمی‌دهد. داده اپ را پاک نکنید، مگر اینکه بخواهید دستگاه به‌عنوان نصب جدید ثبت شود.
 
 محدودیت recurring: تکرارهای بعدی فقط روی دستگاه‌هایی که FCM دارند می‌آید. دستگاه بدون FCM همان کمپین را یک‌بار از pull می‌گیرد.
 
@@ -278,7 +297,7 @@ val token = Fetchy.getToken(context)
 - API Key واقعی را داخل ریپازیتوری عمومی commit نکنید
 - برای `dev/stage/prod` کانفیگ جدا داشته باشید
 - قبل از Release، مسیر endpointها و permission flow را دوباره تست کنید
-- لاگ‌های حساس را در نسخه Release خاموش کنید
+- لاگ‌های حساس را در نسخه Release خاموش کنید (`FetchyLogLevel.NONE` یا `ERROR`)
 
 ---
 

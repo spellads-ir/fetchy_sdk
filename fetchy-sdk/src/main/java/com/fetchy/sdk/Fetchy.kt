@@ -16,6 +16,7 @@ import com.fetchy.sdk.internal.FetchyConstants
 import com.fetchy.sdk.internal.FetchyForegroundPoller
 import com.fetchy.sdk.internal.FetchyRepositoryProvider
 import com.fetchy.sdk.internal.FetchyScope
+import com.fetchy.sdk.internal.isFetchyMessageData
 import com.fetchy.sdk.internal.notification.FetchyNotifier
 import com.fetchy.sdk.internal.notification.FetchyPermissionStateResolver
 import com.fetchy.sdk.internal.work.FetchySyncWorker
@@ -75,6 +76,9 @@ object Fetchy {
     fun getNotificationPermissionStatus(context: Context): FetchyNotificationPermissionStatus {
         return FetchyPermissionStateResolver.resolve(context.applicationContext)
     }
+
+    @JvmStatic
+    fun isFetchyMessage(data: Map<String, String>): Boolean = isFetchyMessageData(data)
 
     @JvmStatic
     fun onNewToken(context: Context, token: String) {

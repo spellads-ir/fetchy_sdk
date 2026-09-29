@@ -21,17 +21,19 @@ internal class FetchyEngine(private val context: Context) {
     private val syncMutex = Mutex()
     private var lastFeedFetchCompletedAtElapsedMs = 0L
 
+    private data class PendingDisplay(val config: FetchyConfig, val ids: List<Long>)
+
     companion object {
         // Prevent duplicate near-simultaneous /feed calls from startup + periodic workers.
         private const val MIN_FEED_FETCH_INTERVAL_MS = 10_000L
     }
 
     suspend fun syncNow(allowFeedFetch: Boolean = true) {
-        syncMutex.withLock {
+        val pending = syncMutex.withLock {
         repository.reconcileInstallMarker()
         val config = repository.getConfig()
         if (config == null) {
-            return@withLock
+            return@withLock null
         }
 
         val apiClient = FetchyApiClient(config.baseUrl)
@@ -82,23 +84,25 @@ internal class FetchyEngine(private val context: Context) {
                 )
             )
         }
-        displayPending(config)
+        PendingDisplay(config, repository.pendingDisplayIds())
         }
+        pending?.let { showPending(it) }
     }
 
     suspend fun ingestFromPush(payload: FetchyNotificationPayload) {
-        syncMutex.withLock {
+        val pending = syncMutex.withLock {
             repository.purgeExpiredNotifications()
-            val config = repository.getConfig() ?: return@withLock
+            val config = repository.getConfig() ?: return@withLock null
             repository.persistNotification(payload, System.currentTimeMillis())
-            displayPending(config)
+            PendingDisplay(config, repository.pendingDisplayIds())
         }
+        pending?.let { showPending(it) }
     }
 
-    private suspend fun displayPending(config: FetchyConfig) {
-        repository.pendingDisplayIds().forEach { localId ->
+    private suspend fun showPending(pending: PendingDisplay) {
+        pending.ids.forEach { localId ->
             val shown = try {
-                notifier.showNotification(localId, config)
+                notifier.showNotification(localId, pending.config)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {

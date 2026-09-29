@@ -24,7 +24,7 @@ import kotlinx.coroutines.CancellationException
 
 internal class FetchyApiClient(
     private val baseUrl: String,
-    private val okHttpClient: OkHttpClient = OkHttpClient()
+    private val okHttpClient: OkHttpClient = FetchyHttp.api
 ) {
     fun registerToken(request: RegisterTokenRequest): String {
         val started = System.nanoTime()

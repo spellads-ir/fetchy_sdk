@@ -19,12 +19,12 @@ import com.fetchy.sdk.internal.FetchyRepositoryProvider
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
+import com.fetchy.sdk.internal.network.FetchyHttp
 import okhttp3.Request
 
 internal class FetchyNotifier(private val context: Context) {
     private val repository = FetchyRepositoryProvider.get(context)
-    private val httpClient = OkHttpClient()
+    private val httpClient = FetchyHttp.images
 
     companion object {
         private const val DEFAULT_REMOTE_BITMAP_SIZE_PX = 128

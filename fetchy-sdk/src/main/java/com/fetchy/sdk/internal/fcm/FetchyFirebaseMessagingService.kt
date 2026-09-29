@@ -3,11 +3,12 @@ package com.fetchy.sdk.internal.fcm
 import android.content.Context
 import com.fetchy.sdk.internal.FetchyEngineProvider
 import com.fetchy.sdk.internal.FetchyLog
-import com.fetchy.sdk.internal.FetchyScope
-import kotlinx.coroutines.CancellationException
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 class FetchyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
@@ -15,8 +16,18 @@ class FetchyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        FetchyScope.launch {
-            FetchyFcmBridge.onMessageReceived(applicationContext, message.data)
+        try {
+            runBlocking {
+                withTimeout(8_000) {
+                    FetchyFcmBridge.onMessageReceived(applicationContext, message.data)
+                }
+            }
+        } catch (timeout: TimeoutCancellationException) {
+            FetchyLog.e("push timed out", timeout)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            FetchyLog.e("push receive failed", error)
         }
     }
 }
