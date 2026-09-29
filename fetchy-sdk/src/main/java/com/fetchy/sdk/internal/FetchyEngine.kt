@@ -24,6 +24,7 @@ internal class FetchyEngine(private val context: Context) {
 
     suspend fun syncNow(allowFeedFetch: Boolean = true) {
         syncMutex.withLock {
+        repository.reconcileInstallMarker()
         val config = repository.getConfig()
         if (config == null) {
             return@withLock

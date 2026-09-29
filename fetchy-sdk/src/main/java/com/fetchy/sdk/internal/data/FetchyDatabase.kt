@@ -61,6 +61,9 @@ internal interface SpStateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: SpStateEntity)
+
+    @Query("DELETE FROM pn_state WHERE `key` IN (:keys)")
+    suspend fun deleteKeys(keys: List<String>)
 }
 
 @Dao
@@ -118,7 +121,8 @@ internal abstract class FetchyDatabase : RoomDatabase() {
                     FetchyDatabase::class.java,
                     FetchyConstants.databaseName
                 )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(FetchyMigrations.MIGRATION_5_6)
+                    .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                     .also { instance = it }
             }

@@ -52,6 +52,7 @@ object Fetchy {
             try {
                 bootstrapMutex.withLock {
                     persistRuntime(appContext, config, clientType)
+                    FetchyRepositoryProvider.get(appContext).reconcileInstallMarker()
                     scheduleSync(appContext, config)
                     FetchyForegroundPoller.start(appContext)
                     refreshFcmToken(appContext)

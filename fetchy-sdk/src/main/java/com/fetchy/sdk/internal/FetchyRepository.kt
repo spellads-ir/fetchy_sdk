@@ -29,6 +29,20 @@ internal class FetchyRepository(private val context: Context) {
 
     suspend fun getBackendToken(): String? = database.stateDao().getValue(FetchyConstants.stateBackendToken)
 
+    suspend fun clearDeviceIdentity() {
+        database.stateDao().deleteKeys(
+            listOf(
+                FetchyConstants.stateBackendToken,
+                FetchyConstants.stateFcmToken,
+                FetchyConstants.stateRegisterFingerprint
+            )
+        )
+    }
+
+    suspend fun reconcileInstallMarker() {
+        FetchyInstallMarker.reconcile(context, this)
+    }
+
     suspend fun saveClientType(clientType: String) {
         upsertState(FetchyConstants.stateClientType, clientType)
     }
