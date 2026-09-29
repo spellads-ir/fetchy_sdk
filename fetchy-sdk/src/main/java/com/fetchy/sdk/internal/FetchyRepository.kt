@@ -78,6 +78,13 @@ internal class FetchyRepository(private val context: Context) {
         upsertState(FetchyConstants.stateRegisterFingerprint, fingerprint)
     }
 
+    suspend fun getLastRegisterAt(): Long? =
+        database.stateDao().getValue(FetchyConstants.stateLastRegisterAt)?.toLongOrNull()
+
+    suspend fun saveLastRegisterAt(epochMs: Long) {
+        upsertState(FetchyConstants.stateLastRegisterAt, epochMs.toString())
+    }
+
     suspend fun saveFcmToken(token: String) {
         upsertState(FetchyConstants.stateFcmToken, token)
     }

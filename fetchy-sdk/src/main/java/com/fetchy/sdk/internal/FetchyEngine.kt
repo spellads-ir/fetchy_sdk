@@ -45,13 +45,15 @@ internal class FetchyEngine(private val context: Context) {
         )
 
         val currentFingerprint = registerFingerprint(registerRequest)
+        val nowEpochMs = System.currentTimeMillis()
         val backendToken: String
         if (
             !shouldRegisterDevice(
                 existingToken = existingToken,
                 fingerprint = currentFingerprint,
                 storedFingerprint = repository.getRegisterFingerprint(),
-                fcmToken = registerRequest.fcmToken
+                lastRegisterAtEpochMs = repository.getLastRegisterAt(),
+                nowEpochMs = nowEpochMs
             )
         ) {
             backendToken = existingToken!!
@@ -59,6 +61,14 @@ internal class FetchyEngine(private val context: Context) {
             backendToken = registerTokenWithRecovery(apiClient, registerRequest)
             repository.saveBackendToken(backendToken)
             repository.saveRegisterFingerprint(currentFingerprint)
+            val recordedAt = registerTimestampAfterAttempt(
+                previous = repository.getLastRegisterAt(),
+                succeeded = true,
+                nowEpochMs = nowEpochMs
+            )
+            if (recordedAt != null) {
+                repository.saveLastRegisterAt(recordedAt)
+            }
         }
 
         repository.purgeExpiredNotifications()
@@ -174,12 +184,21 @@ internal fun shouldRegisterDevice(
     existingToken: String?,
     fingerprint: String,
     storedFingerprint: String?,
-    fcmToken: String?
+    lastRegisterAtEpochMs: Long?,
+    nowEpochMs: Long,
+    registerRefreshIntervalMs: Long = FetchyConstants.registerRefreshIntervalMs
 ): Boolean {
     if (existingToken.isNullOrBlank()) return true
     if (fingerprint != storedFingerprint) return true
-    return !fcmToken.isNullOrBlank()
+    if (lastRegisterAtEpochMs == null) return true
+    return nowEpochMs - lastRegisterAtEpochMs > registerRefreshIntervalMs
 }
+
+internal fun registerTimestampAfterAttempt(
+    previous: Long?,
+    succeeded: Boolean,
+    nowEpochMs: Long
+): Long? = if (succeeded) nowEpochMs else previous
 
 internal object FetchyEngineProvider {
     @Volatile
