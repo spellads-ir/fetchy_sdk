@@ -31,7 +31,9 @@ internal object FetchyConfigLoader {
                 ) ?: FetchyConstants.periodicPullIntervalMinutes
             ),
             push = FetchyPushConfig(
-                enabled = pushJson?.optBoolean("enabled", true) ?: true
+                enabled = pushJson?.optBoolean("enabled", true) ?: true,
+                provider = pushJson?.optString("provider", "firebase")?.trim()?.ifEmpty { "firebase" }
+                    ?: "firebase"
             ),
             firebase = firebaseJson?.let { firebase ->
                 FetchyFirebaseConfig(
@@ -71,7 +73,9 @@ internal object FetchyConfigLoader {
             )
             .put(
                 "push",
-                JSONObject().put("enabled", config.push.enabled)
+                JSONObject()
+                    .put("enabled", config.push.enabled)
+                    .put("provider", config.push.provider)
             )
             .apply {
                 val firebase = config.firebase ?: return@apply

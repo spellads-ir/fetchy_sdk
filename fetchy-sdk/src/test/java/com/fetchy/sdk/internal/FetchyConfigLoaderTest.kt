@@ -38,6 +38,16 @@ class FetchyConfigLoaderTest {
 
         val again = FetchyConfigLoader.fromJson(FetchyConfigLoader.toJson(config))
         assertEquals(config.firebase, again.firebase)
+        assertEquals("firebase", again.push.provider)
+    }
+
+    @Test
+    fun readsTheCustomerPushProvider() {
+        val config = FetchyConfigLoader.fromJson(
+            baseJson(""", "push": {"enabled": true, "provider": "customer"}""")
+        )
+        assertEquals("customer", config.push.provider)
+        assertEquals("customer", FetchyConfigLoader.fromJson(FetchyConfigLoader.toJson(config)).push.provider)
     }
 
     @Test

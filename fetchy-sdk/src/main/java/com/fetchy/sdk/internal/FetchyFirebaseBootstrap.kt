@@ -19,10 +19,13 @@ internal object FetchyFirebaseGate {
 internal fun decideFirebaseBootstrap(
     defaultAppExists: Boolean,
     defaultProjectId: String?,
-    configuredProjectId: String?
+    configuredProjectId: String?,
+    provider: String = "firebase"
 ): FirebaseBootstrapAction {
+    val customer = provider.trim().equals("customer", ignoreCase = true)
     val configured = configuredProjectId?.trim()?.takeIf { it.isNotEmpty() }
     if (!defaultAppExists) {
+        if (customer) return FirebaseBootstrapAction.SKIP
         return if (configured != null) FirebaseBootstrapAction.INITIALIZE else FirebaseBootstrapAction.SKIP
     }
     val existing = defaultProjectId?.trim()?.takeIf { it.isNotEmpty() }
@@ -42,23 +45,25 @@ internal fun catchFirebaseBootstrap(block: () -> FirebaseBootstrapAction): Fireb
 }
 
 internal object FetchyFirebaseBootstrap {
-    fun apply(context: Context, firebase: FetchyFirebaseConfig?) {
+    fun apply(context: Context, config: FetchyConfig) {
         val action = catchFirebaseBootstrap {
             Class.forName("com.google.firebase.FirebaseApp")
-            FetchyFirebaseApps.apply(context, firebase)
+            FetchyFirebaseApps.apply(context, config.firebase, config.push.provider)
         }
         FetchyFirebaseGate.action = action
     }
 }
 
 private object FetchyFirebaseApps {
-    fun apply(context: Context, firebase: FetchyFirebaseConfig?): FirebaseBootstrapAction {
+    fun apply(context: Context, firebase: FetchyFirebaseConfig?, provider: String): FirebaseBootstrapAction {
         val defaultApp = FirebaseApp.getApps(context)
             .firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
+        val customer = provider.trim().equals("customer", ignoreCase = true)
         var action = decideFirebaseBootstrap(
             defaultAppExists = defaultApp != null,
             defaultProjectId = defaultApp?.options?.projectId,
-            configuredProjectId = firebase?.projectId
+            configuredProjectId = firebase?.projectId,
+            provider = provider
         )
         when (action) {
             FirebaseBootstrapAction.INITIALIZE -> {
@@ -86,7 +91,14 @@ private object FetchyFirebaseApps {
                     "The FCM token will not be uploaded (fcm_token_status=project_mismatch). Pull delivery still works."
             )
             FirebaseBootstrapAction.USE_EXISTING,
-            FirebaseBootstrapAction.SKIP -> Unit
+            FirebaseBootstrapAction.SKIP -> {
+                if (customer && defaultApp == null) {
+                    FetchyLog.w(
+                        "push.provider=customer uses the host app's default FirebaseApp. " +
+                            "Put google-services.json in the host app; Fetchy will not initialize Firebase from the config block."
+                    )
+                }
+            }
         }
         FetchyLog.i("firebase bootstrap action=$action")
         return action

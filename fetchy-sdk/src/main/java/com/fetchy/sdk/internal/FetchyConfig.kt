@@ -70,7 +70,8 @@ internal data class FetchyPullConfig(
 }
 
 internal data class FetchyPushConfig(
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val provider: String = "firebase"
 )
 
 internal data class FetchyNotificationConfig(

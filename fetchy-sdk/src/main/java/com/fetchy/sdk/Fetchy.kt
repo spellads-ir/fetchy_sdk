@@ -184,7 +184,7 @@ object Fetchy {
         runtimeClientType = clientType
         return runtimeConfig ?: FetchyConfigLoader.fromAsset(context).also { config ->
             runtimeConfig = config
-            FetchyFirebaseBootstrap.apply(context, config.firebase)
+            FetchyFirebaseBootstrap.apply(context, config)
             FetchyNotifier(context).ensureChannel(config)
         }
     }

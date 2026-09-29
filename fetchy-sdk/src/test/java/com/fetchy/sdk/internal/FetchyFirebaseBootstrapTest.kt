@@ -65,6 +65,45 @@ class FetchyFirebaseBootstrapTest {
     }
 
     @Test
+    fun customerProviderDoesNotInitializeWhenTheHostHasNoFirebaseApp() {
+        assertEquals(
+            FirebaseBootstrapAction.SKIP,
+            decideFirebaseBootstrap(
+                defaultAppExists = false,
+                defaultProjectId = null,
+                configuredProjectId = "customer-project",
+                provider = "customer"
+            )
+        )
+    }
+
+    @Test
+    fun customerProviderUsesTheHostAppWhenTheProjectMatches() {
+        assertEquals(
+            FirebaseBootstrapAction.USE_EXISTING,
+            decideFirebaseBootstrap(
+                defaultAppExists = true,
+                defaultProjectId = "customer-project",
+                configuredProjectId = "customer-project",
+                provider = "customer"
+            )
+        )
+    }
+
+    @Test
+    fun customerProviderRejectsADifferentHostProject() {
+        assertEquals(
+            FirebaseBootstrapAction.PROJECT_MISMATCH,
+            decideFirebaseBootstrap(
+                defaultAppExists = true,
+                defaultProjectId = "other-project",
+                configuredProjectId = "customer-project",
+                provider = "customer"
+            )
+        )
+    }
+
+    @Test
     fun usesApplicationIdWhenItIsAMobilesdkAppId() {
         assertEquals(
             "1:1:android:abc",

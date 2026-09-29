@@ -174,6 +174,13 @@ SDK 1.6.0 خودش Firebase را راه می‌اندازد، `FetchyFirebaseMes
 2. اگر `FirebaseApp` پیش‌فرض از قبل باشد و `projectId` آن با `firebase.project_id` یکی باشد، SDK همان اپ را استفاده می‌کند.
 3. اگر `FirebaseApp` پیش‌فرض پروژهٔ دیگری باشد، توکن آن آپلود نمی‌شود. ثبت دستگاه با `fcm_token_status=project_mismatch` انجام می‌شود و یک WARN در لاگ نوشته می‌شود. پوش Fetchy با آن توکن کار نمی‌کند و تحویل از مسیر pull ادامه دارد. `project_mismatch` یعنی پروژهٔ Firebase پیش‌فرض اپ با پروژهٔ داخل `fetchy-config.json` یکی نیست.
 
+اگر `projectId` پیش‌فرض خالی باشد، SDK همان اپ موجود را نگه می‌دارد.
+
+`push.provider` مشخص می‌کند Firebase از کجا می‌آید:
+
+- `firebase` برای اپ‌هایی که Firebase را Fetchy مدیریت می‌کند (`fetchy_managed`). رفتار سه حالت بالا همین است. میزبان به `google-services.json` و plugin `com.google.gms.google-services` نیاز ندارد، چون SDK پروژه را از بلوک `firebase` می‌سازد.
+- `customer` برای اپ‌هایی که Firebase خودشان را دارند. فایل `google-services.json` پروژهٔ مشتری را در ماژول اپ میزبان بگذارید، همان جایی که plugin `com.google.gms.google-services` آن را می‌خواند (معمولاً کنار `build.gradle` ماژول `app`). SDK `FirebaseApp` پیش‌فرض میزبان را استفاده می‌کند و از بلوک کانفیگ `FirebaseApp` جدید نمی‌سازد. `projectId` آن اپ با `firebase.project_id` فایل آپلودشده مقایسه می‌شود. اگر یکی نباشند، توکن آپلود نمی‌شود (`fcm_token_status=project_mismatch`) و تحویل از مسیر pull ادامه دارد. اگر میزبان `FirebaseApp` پیش‌فرض نداشته باشد، SDK Firebase را راه نمی‌اندازد و pull ادامه دارد.
+
 اگر بلوک `firebase` نباشد و میزبان خودش `google-services.json` همان پروژه را گذاشته باشد، رفتار قبلی حفظ می‌شود. خطاهای این راه‌اندازی، از جمله نبودن کلاس Firebase در زمان اجرا، داخل SDK گرفته می‌شوند و اپ میزبان را نمی‌بندند.
 
 پیام‌های FCM باید **data-only** باشند (بدون بلوک `notification`) تا SDK بتواند نمایش و dedup را خودش انجام دهد.
