@@ -6,6 +6,7 @@ import com.fetchy.sdk.internal.model.FeedResponse
 import com.fetchy.sdk.internal.model.RegisterTokenRequest
 import com.fetchy.sdk.internal.model.FetchyNotificationPayload
 import com.fetchy.sdk.internal.model.FetchyScope
+import com.fetchy.sdk.internal.FetchyLog
 import com.fetchy.sdk.internal.model.FetchySource
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -26,6 +27,7 @@ internal class FetchyApiClient(
     private val okHttpClient: OkHttpClient = OkHttpClient()
 ) {
     fun registerToken(request: RegisterTokenRequest): String {
+        val started = System.nanoTime()
         val bodyJson = JSONObject()
             .put("app_api_key", request.appApiKey)
             .put("existing_token", request.existingToken.orEmpty())
@@ -38,11 +40,21 @@ internal class FetchyApiClient(
             .put("app_version", request.appVersion)
             .put("sdk_version", request.sdkVersion)
 
-        val responseJson = executeJsonPost("/tokens/register", bodyJson)
-        return responseJson.getString("token")
+        return try {
+            val responseJson = executeJsonPost("/tokens/register", bodyJson)
+            val token = responseJson.getString("token")
+            FetchyLog.i(
+                "register status=200 durationMs=${elapsedMs(started)} token=${FetchyLog.redact(token)}"
+            )
+            token
+        } catch (error: IOException) {
+            FetchyLog.e("register failed durationMs=${elapsedMs(started)} ${error.message}")
+            throw error
+        }
     }
 
     fun getFeed(token: String, lastRetrieve: Long): FeedResponse {
+        val started = System.nanoTime()
         val url = baseUrl.toHttpUrl().newBuilder()
             .addEncodedPathSegments("feed")
             .addQueryParameter("token", token)
@@ -54,12 +66,23 @@ internal class FetchyApiClient(
             .get()
             .build()
 
-        okHttpClient.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw IOException(parseApiError(body, response.code))
+        return try {
+            okHttpClient.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    throw IOException(parseApiError(body, response.code))
+                }
+                val feed = parseFeedResponse(body)
+                FetchyLog.i(
+                    "feed status=${response.code} durationMs=${elapsedMs(started)} " +
+                        "notifications=${feed.notifications.size} exclusive=${feed.exclusiveNotifications.size} " +
+                        "token=${FetchyLog.redact(token)}"
+                )
+                feed
             }
-            return parseFeedResponse(body)
+        } catch (error: IOException) {
+            FetchyLog.e("feed failed durationMs=${elapsedMs(started)} token=${FetchyLog.redact(token)} ${error.message}")
+            throw error
         }
     }
 
@@ -142,10 +165,7 @@ internal class FetchyApiClient(
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (error: Exception) {
-                    try {
-                        android.util.Log.e("Fetchy", "skipping unparseable feed item at index $index", error)
-                    } catch (_: RuntimeException) {
-                    }
+                    FetchyLog.e("skipping unparseable feed item at index $index", error)
                 }
             }
         }
@@ -203,6 +223,8 @@ internal class FetchyApiClient(
             }
         }
     }
+
+    private fun elapsedMs(startedNanos: Long): Long = (System.nanoTime() - startedNanos) / 1_000_000L
 
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()

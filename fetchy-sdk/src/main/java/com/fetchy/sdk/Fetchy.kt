@@ -35,6 +35,11 @@ object Fetchy {
     private val bootstrapMutex = Mutex()
 
     @JvmStatic
+    fun setLogLevel(level: FetchyLogLevel) {
+        com.fetchy.sdk.internal.FetchyLog.level = level
+    }
+
+    @JvmStatic
     fun initialize(context: Context) {
         initialize(context, FetchyClientType.ANDROID_NATIVE)
     }

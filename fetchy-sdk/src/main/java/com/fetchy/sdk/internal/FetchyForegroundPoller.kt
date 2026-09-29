@@ -28,7 +28,7 @@ internal object FetchyForegroundPoller : DefaultLifecycleObserver {
             try {
                 ProcessLifecycleOwner.get().lifecycle.addObserver(this)
             } catch (error: Exception) {
-                logForeground("foreground polling skipped", error)
+                FetchyLog.e("foreground polling skipped", error)
             }
         }
     }
@@ -47,7 +47,7 @@ internal object FetchyForegroundPoller : DefaultLifecycleObserver {
                     throw cancelled
                 } catch (error: Exception) {
                     consecutiveFailures += 1
-                    logForeground("foreground sync failed", error)
+                    FetchyLog.e("foreground sync failed", error)
                     delay(foregroundBackoffDelayMs(consecutiveFailures))
                 }
             }
@@ -57,12 +57,5 @@ internal object FetchyForegroundPoller : DefaultLifecycleObserver {
     override fun onStop(owner: LifecycleOwner) {
         pollJob?.cancel()
         pollJob = null
-    }
-
-    private fun logForeground(message: String, error: Exception) {
-        try {
-            android.util.Log.e(FetchyScope.LOG_TAG, message, error)
-        } catch (_: RuntimeException) {
-        }
     }
 }
