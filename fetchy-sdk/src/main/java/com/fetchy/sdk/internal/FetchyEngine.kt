@@ -81,7 +81,16 @@ internal class FetchyEngine(private val context: Context) {
             nowElapsed - lastFeedFetchCompletedAtElapsedMs < MIN_FEED_FETCH_INTERVAL_MS
         if (fetchFeed && !rateLimited) {
             val lastRetrieve = repository.getLastRetrieve()
-            val feedResponse = apiClient.getFeed(backendToken, lastRetrieve)
+            val encoded = encodePendingReports(
+                repository.oldestPendingReports(FetchyConstants.maxPendingReportsPerRequest)
+            )
+            val feedResponse = apiClient.getFeed(
+                token = backendToken,
+                lastRetrieve = lastRetrieve,
+                exclusiveAck = encoded.exclusiveAck,
+                delivered = encoded.delivered
+            )
+            repository.deletePendingReports(pendingReportIdsToDelete(true, encoded.includedLocalIds))
             val receivedAt = System.currentTimeMillis()
             lastFeedFetchCompletedAtElapsedMs = SystemClock.elapsedRealtime()
             (feedResponse.notifications + feedResponse.exclusiveNotifications).forEach { payload ->
@@ -106,6 +115,7 @@ internal class FetchyEngine(private val context: Context) {
             repository.purgeExpiredNotifications()
             val config = repository.getConfig() ?: return@withLock null
             repository.persistNotification(payload, System.currentTimeMillis())
+            repository.markUndisplayedAsPush(payload.dedupeKey())
             PendingDisplay(config, repository.pendingDisplayIds())
         }
         pending?.let { showPending(it) }

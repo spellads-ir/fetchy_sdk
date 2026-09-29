@@ -180,6 +180,23 @@ class FetchyApiClientTest {
     }
 
     @Test
+    fun getFeed_alwaysRequestsV2AndSendsPendingReports() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notifications":[]}"""))
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        client.getFeed(
+            token = "backend-token",
+            lastRetrieve = 15,
+            exclusiveAck = "7,8",
+            delivered = "e7l,b3p"
+        )
+        val url = server.takeRequest().requestUrl!!
+        assertEquals("2", url.queryParameter("v"))
+        assertEquals("7,8", url.queryParameter("exclusive_ack"))
+        assertEquals("e7l,b3p", url.queryParameter("delivered"))
+        assertEquals("15", url.queryParameter("last_retrieve"))
+    }
+
+    @Test
     fun registerToken_includesFcmToken() {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":"device-1"}"""))
 

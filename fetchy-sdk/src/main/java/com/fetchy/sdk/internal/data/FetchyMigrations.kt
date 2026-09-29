@@ -53,4 +53,18 @@ internal object FetchyMigrations {
             db.execSQL(BACKFILL_EXPIRES_AT)
         }
     }
+
+    const val CREATE_PENDING_REPORTS =
+        "CREATE TABLE IF NOT EXISTS `pn_pending_reports` (" +
+            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`scope` TEXT NOT NULL, " +
+            "`remoteNotificationId` INTEGER NOT NULL, " +
+            "`channel` TEXT NOT NULL, " +
+            "`createdAtEpochMs` INTEGER NOT NULL)"
+
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(CREATE_PENDING_REPORTS)
+        }
+    }
 }

@@ -49,6 +49,15 @@ internal data class SpNotificationEntity(
     val expiresAtEpochMs: Long = 0
 )
 
+@Entity(tableName = "pn_pending_reports")
+internal data class SpPendingReportEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val scope: String,
+    val remoteNotificationId: Long,
+    val channel: String,
+    val createdAtEpochMs: Long
+)
+
 @Entity(tableName = "pn_ack_records")
 internal data class SpAckRecordEntity(
     @PrimaryKey val ackKey: String,
@@ -97,6 +106,12 @@ internal interface SpNotificationDao {
     @Query("UPDATE pn_notifications SET displayAttempts = displayAttempts + 1 WHERE localId = :localId")
     suspend fun incrementDisplayAttempts(localId: Long)
 
+    @Query(
+        "UPDATE pn_notifications SET source = 'PUSH' " +
+            "WHERE dedupeKey = :dedupeKey AND displayedAtEpochMs IS NULL"
+    )
+    suspend fun markUndisplayedAsPush(dedupeKey: String)
+
     @Query("UPDATE pn_notifications SET expiresAtEpochMs = :expiresAtEpochMs WHERE localId = :localId")
     suspend fun updateExpiresAt(localId: Long, expiresAtEpochMs: Long)
 
@@ -110,19 +125,35 @@ internal interface SpAckDao {
     suspend fun insert(entity: SpAckRecordEntity): Long
 }
 
+@Dao
+internal interface SpPendingReportDao {
+    @Insert
+    suspend fun insert(entity: SpPendingReportEntity)
+
+    @Query(
+        "SELECT * FROM pn_pending_reports ORDER BY createdAtEpochMs ASC, id ASC LIMIT :limit"
+    )
+    suspend fun oldest(limit: Int): List<SpPendingReportEntity>
+
+    @Query("DELETE FROM pn_pending_reports WHERE id IN (:ids)")
+    suspend fun deleteIds(ids: List<Long>)
+}
+
 @Database(
     entities = [
         SpStateEntity::class,
         SpNotificationEntity::class,
-        SpAckRecordEntity::class
+        SpAckRecordEntity::class,
+        SpPendingReportEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 internal abstract class FetchyDatabase : RoomDatabase() {
     abstract fun stateDao(): SpStateDao
     abstract fun notificationDao(): SpNotificationDao
     abstract fun ackDao(): SpAckDao
+    abstract fun pendingReportDao(): SpPendingReportDao
 
     companion object {
         @Volatile
@@ -135,7 +166,11 @@ internal abstract class FetchyDatabase : RoomDatabase() {
                     FetchyDatabase::class.java,
                     FetchyConstants.databaseName
                 )
-                    .addMigrations(FetchyMigrations.MIGRATION_5_6, FetchyMigrations.MIGRATION_6_7)
+                    .addMigrations(
+                        FetchyMigrations.MIGRATION_5_6,
+                        FetchyMigrations.MIGRATION_6_7,
+                        FetchyMigrations.MIGRATION_7_8
+                    )
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                     .also { instance = it }

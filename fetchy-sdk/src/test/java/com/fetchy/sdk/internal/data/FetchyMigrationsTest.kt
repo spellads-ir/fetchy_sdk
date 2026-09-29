@@ -119,6 +119,25 @@ class FetchyMigrationsTest {
         assertEquals(1L, displayedAt("PULL::BROADCAST::na::t::b::::na"))
     }
 
+    @Test
+    fun createsPendingReportsOnTheV7ToV8Migration() {
+        assertEquals(7, FetchyMigrations.MIGRATION_7_8.startVersion)
+        assertEquals(8, FetchyMigrations.MIGRATION_7_8.endVersion)
+        connection.createStatement().use { statement ->
+            statement.execute(FetchyMigrations.CREATE_PENDING_REPORTS)
+        }
+        val columns = mutableListOf<String>()
+        connection.createStatement().use { statement ->
+            statement.executeQuery("PRAGMA table_info(pn_pending_reports)").use { rows ->
+                while (rows.next()) columns.add(rows.getString(2))
+            }
+        }
+        assertEquals(
+            listOf("id", "scope", "remoteNotificationId", "channel", "createdAtEpochMs"),
+            columns
+        )
+    }
+
     private fun migrate() {
         connection.createStatement().use { statement ->
             statement.execute(FetchyMigrations.REWRITE_LEGACY_DEDUPE_KEYS)

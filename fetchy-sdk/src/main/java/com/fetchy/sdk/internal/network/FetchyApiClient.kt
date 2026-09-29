@@ -57,12 +57,22 @@ internal class FetchyApiClient(
         }
     }
 
-    fun getFeed(token: String, lastRetrieve: Long): FeedResponse {
+    fun getFeed(
+        token: String,
+        lastRetrieve: Long,
+        exclusiveAck: String? = null,
+        delivered: String? = null
+    ): FeedResponse {
         val started = System.nanoTime()
         val url = baseUrl.toHttpUrl().newBuilder()
             .addEncodedPathSegments("feed")
             .addQueryParameter("token", token)
             .addQueryParameter("last_retrieve", lastRetrieve.toString())
+            .addQueryParameter("v", "2")
+            .apply {
+                if (!exclusiveAck.isNullOrBlank()) addQueryParameter("exclusive_ack", exclusiveAck)
+                if (!delivered.isNullOrBlank()) addQueryParameter("delivered", delivered)
+            }
             .build()
 
         val request = Request.Builder()

@@ -105,7 +105,9 @@ internal class FetchyNotifier(private val context: Context) {
             }
 
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+            val firstDisplay = entity.displayedAtEpochMs == null
             repository.markNotificationDisplayed(entity.localId, System.currentTimeMillis())
+            if (firstDisplay) repository.enqueueDisplayedReport(entity)
             true
         } catch (_: SecurityException) {
             false

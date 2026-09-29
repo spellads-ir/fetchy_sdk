@@ -6,6 +6,7 @@ import com.fetchy.sdk.BuildConfig
 import com.fetchy.sdk.FetchyNotificationPermissionStatus
 import com.fetchy.sdk.internal.data.SpAckRecordEntity
 import com.fetchy.sdk.internal.data.SpNotificationEntity
+import com.fetchy.sdk.internal.data.SpPendingReportEntity
 import com.fetchy.sdk.internal.data.SpStateEntity
 import com.fetchy.sdk.internal.data.FetchyDatabase
 import com.fetchy.sdk.internal.model.RegisterTokenRequest
@@ -152,6 +153,45 @@ internal class FetchyRepository(private val context: Context) {
 
     suspend fun markNotificationDisplayed(localId: Long, displayedAtEpochMs: Long) {
         database.notificationDao().markDisplayed(localId, displayedAtEpochMs)
+    }
+
+    suspend fun markUndisplayedAsPush(dedupeKey: String) {
+        database.notificationDao().markUndisplayedAsPush(dedupeKey)
+    }
+
+    suspend fun enqueueDisplayedReport(entity: SpNotificationEntity) {
+        val remoteId = entity.remoteNotificationId ?: return
+        val scope = when (entity.scope.uppercase()) {
+            "EXCLUSIVE" -> "e"
+            "BROADCAST" -> "b"
+            else -> return
+        }
+        val channel = if (entity.source.equals("PUSH", ignoreCase = true)) "p" else "l"
+        database.pendingReportDao().insert(
+            SpPendingReportEntity(
+                scope = scope,
+                remoteNotificationId = remoteId,
+                channel = channel,
+                createdAtEpochMs = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun oldestPendingReports(limit: Int = FetchyConstants.maxPendingReportsPerRequest): List<PendingReportRow> {
+        return database.pendingReportDao().oldest(limit).map { row ->
+            PendingReportRow(
+                localId = row.id,
+                createdAtEpochMs = row.createdAtEpochMs,
+                scope = row.scope,
+                remoteNotificationId = row.remoteNotificationId,
+                channel = row.channel
+            )
+        }
+    }
+
+    suspend fun deletePendingReports(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        database.pendingReportDao().deleteIds(ids)
     }
 
     suspend fun markNotificationOpened(localId: Long, openedAtEpochMs: Long) {
