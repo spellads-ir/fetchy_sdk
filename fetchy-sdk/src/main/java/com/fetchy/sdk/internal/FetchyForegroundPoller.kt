@@ -6,16 +6,13 @@ import android.os.Looper
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 internal object FetchyForegroundPoller : DefaultLifecycleObserver {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
@@ -28,18 +25,31 @@ internal object FetchyForegroundPoller : DefaultLifecycleObserver {
         mainHandler.post {
             if (started) return@post
             started = true
-            ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+            try {
+                ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+            } catch (error: Exception) {
+                logForeground("foreground polling skipped", error)
+            }
         }
     }
 
     override fun onStart(owner: LifecycleOwner) {
         val context = appContext ?: return
         pollJob?.cancel()
-        pollJob = scope.launch {
-            FetchyEngineProvider.get(context).syncNow(allowFeedFetch = true)
+        pollJob = FetchyScope.launch {
+            var consecutiveFailures = 0
             while (isActive) {
-                delay(FetchyConstants.foregroundPullIntervalMs)
-                FetchyEngineProvider.get(context).syncNow(allowFeedFetch = true)
+                try {
+                    FetchyEngineProvider.get(context).syncNow(allowFeedFetch = true)
+                    consecutiveFailures = 0
+                    delay(FetchyConstants.foregroundPullIntervalMs)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    consecutiveFailures += 1
+                    logForeground("foreground sync failed", error)
+                    delay(foregroundBackoffDelayMs(consecutiveFailures))
+                }
             }
         }
     }
@@ -47,5 +57,12 @@ internal object FetchyForegroundPoller : DefaultLifecycleObserver {
     override fun onStop(owner: LifecycleOwner) {
         pollJob?.cancel()
         pollJob = null
+    }
+
+    private fun logForeground(message: String, error: Exception) {
+        try {
+            android.util.Log.e(FetchyScope.LOG_TAG, message, error)
+        } catch (_: RuntimeException) {
+        }
     }
 }

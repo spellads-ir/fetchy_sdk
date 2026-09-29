@@ -104,6 +104,35 @@ class FetchyApiClientTest {
     }
 
     @Test
+    fun getFeed_skipsUnparseableItemAndKeepsTheRest() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "notifications": [
+                    {"id": 1, "title": "bad", "body": "b", "created_at": "garbage"},
+                    {"id": 2, "title": "good", "body": "ok", "created_at": "2026-05-03T11:00:00Z"}
+                  ],
+                  "exclusive_notifications": [
+                    {"id": 9, "title": "bad-exclusive", "created_at": "not-a-timestamp"},
+                    {"id": 10, "title": "good-exclusive", "created_at": "2026-05-03T11:00:01Z"}
+                  ]
+                }
+                """.trimIndent()
+            )
+        )
+
+        val client = FetchyApiClient(server.url("/").toString().removeSuffix("/"))
+        val feed = client.getFeed(token = "backend-token", lastRetrieve = 0)
+
+        assertEquals(1, feed.notifications.size)
+        assertEquals(2L, feed.notifications[0].remoteNotificationId)
+        assertEquals("good", feed.notifications[0].title)
+        assertEquals(1, feed.exclusiveNotifications.size)
+        assertEquals(10L, feed.exclusiveNotifications[0].remoteNotificationId)
+    }
+
+    @Test
     fun registerToken_includesFcmToken() {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"token":"device-1"}"""))
 

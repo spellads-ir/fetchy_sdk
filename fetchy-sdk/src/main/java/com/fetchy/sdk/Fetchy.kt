@@ -15,12 +15,10 @@ import com.fetchy.sdk.internal.FetchyConfigLoader
 import com.fetchy.sdk.internal.FetchyConstants
 import com.fetchy.sdk.internal.FetchyForegroundPoller
 import com.fetchy.sdk.internal.FetchyRepositoryProvider
+import com.fetchy.sdk.internal.FetchyScope
 import com.fetchy.sdk.internal.notification.FetchyNotifier
 import com.fetchy.sdk.internal.notification.FetchyPermissionStateResolver
 import com.fetchy.sdk.internal.work.FetchySyncWorker
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -34,7 +32,6 @@ object Fetchy {
     @Volatile
     private var runtimeClientType: FetchyClientType? = null
 
-    private val bootstrapScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val bootstrapMutex = Mutex()
 
     @JvmStatic
@@ -46,7 +43,7 @@ object Fetchy {
     fun initialize(context: Context, clientType: FetchyClientType) {
         val appContext = context.applicationContext
         val config = prepareRuntime(appContext, clientType)
-        bootstrapScope.launch {
+        FetchyScope.launch {
             try {
                 bootstrapMutex.withLock {
                     persistRuntime(appContext, config, clientType)
@@ -81,7 +78,7 @@ object Fetchy {
     @JvmStatic
     fun handleRemoteMessage(context: Context, data: Map<String, String>) {
         val appContext = context.applicationContext
-        bootstrapScope.launch {
+        FetchyScope.launch {
             com.fetchy.sdk.internal.fcm.FetchyFcmBridge.onMessageReceived(appContext, data)
         }
     }

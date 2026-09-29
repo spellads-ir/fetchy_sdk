@@ -19,6 +19,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.CancellationException
 
 internal class FetchyApiClient(
     private val baseUrl: String,
@@ -114,29 +115,38 @@ internal class FetchyApiClient(
         return buildList(array.length()) {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
-                val linkUrl = item.optString("link_url").takeIf { it.isNotBlank() }
-                    ?: item.optString("deep_link").takeIf { it.isNotBlank() }
-                add(
-                    FetchyNotificationPayload(
-                        source = source,
-                        scope = item.optString("scope").toScope(scope),
-                        title = item.optString("title").ifBlank { "Fetchy" },
-                        body = item.optString("body"),
-                        badgeUrl = item.optString("badge_url").takeIf { it.isNotBlank() },
-                        imageUrl = item.optString("image_url").takeIf { it.isNotBlank() },
-                        linkUrl = linkUrl,
-                        actionButtons = parseActionButtonArray(item.optJSONArray("action_buttons")),
-                        remoteNotificationId = item.optLong("id").takeIf { it != 0L },
-                        orgId = item.optLong("org_id").takeIf { it != 0L },
-                        appId = item.optLong("app_id").takeIf { it != 0L },
-                        clickAckSignature = item.optString("click_ack_signature").takeIf { it.isNotBlank() },
-                        createdAtEpochMs = item.optString("created_at").takeIf { it.isNotBlank() }?.let(::parseBackendTimestamp),
-                        fetchyId = item.optString("fetchy_id").takeIf { it.isNotBlank() },
-                        schemaVersion = item.optInt("schema_version").takeIf { it != 0 },
-                        runId = item.optLong("run_id").takeIf { it != 0L },
-                        pushScheduleType = item.optString("push_schedule_type").takeIf { it.isNotBlank() }
+                try {
+                    val linkUrl = item.optString("link_url").takeIf { it.isNotBlank() }
+                        ?: item.optString("deep_link").takeIf { it.isNotBlank() }
+                    add(
+                        FetchyNotificationPayload(
+                            source = source,
+                            scope = item.optString("scope").toScope(scope),
+                            title = item.optString("title").ifBlank { "Fetchy" },
+                            body = item.optString("body"),
+                            badgeUrl = item.optString("badge_url").takeIf { it.isNotBlank() },
+                            imageUrl = item.optString("image_url").takeIf { it.isNotBlank() },
+                            linkUrl = linkUrl,
+                            actionButtons = parseActionButtonArray(item.optJSONArray("action_buttons")),
+                            remoteNotificationId = item.optLong("id").takeIf { it != 0L },
+                            orgId = item.optLong("org_id").takeIf { it != 0L },
+                            appId = item.optLong("app_id").takeIf { it != 0L },
+                            clickAckSignature = item.optString("click_ack_signature").takeIf { it.isNotBlank() },
+                            createdAtEpochMs = item.optString("created_at").takeIf { it.isNotBlank() }?.let(::parseBackendTimestamp),
+                            fetchyId = item.optString("fetchy_id").takeIf { it.isNotBlank() },
+                            schemaVersion = item.optInt("schema_version").takeIf { it != 0 },
+                            runId = item.optLong("run_id").takeIf { it != 0L },
+                            pushScheduleType = item.optString("push_schedule_type").takeIf { it.isNotBlank() }
+                        )
                     )
-                )
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    try {
+                        android.util.Log.e("Fetchy", "skipping unparseable feed item at index $index", error)
+                    } catch (_: RuntimeException) {
+                    }
+                }
             }
         }
     }

@@ -12,23 +12,30 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import com.fetchy.sdk.internal.FetchyConstants
 import com.fetchy.sdk.internal.FetchyRepositoryProvider
+import com.fetchy.sdk.internal.FetchyScope
 import com.fetchy.sdk.internal.data.SpNotificationEntity
 import com.fetchy.sdk.internal.model.AckLinkRequest
 import com.fetchy.sdk.internal.network.FetchyApiClient
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class FetchyNotificationProxyActivity : Activity() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        scope.launch {
-            handleIntent()
-            finish()
+        FetchyScope.launch {
+            try {
+                withContext(Dispatchers.Main.immediate) {
+                    handleIntent()
+                    finish()
+                }
+            } catch (cancelled: CancellationException) {
+                withContext(Dispatchers.Main.immediate) { finish() }
+                throw cancelled
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main.immediate) { finish() }
+            }
         }
     }
 

@@ -10,17 +10,13 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.fetchy.sdk.internal.FetchyConstants
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import com.fetchy.sdk.internal.FetchyScope
 import kotlinx.coroutines.launch
 
 internal object FetchyFcmCoordinator {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     fun saveTokenAndSync(context: Context, token: String) {
         val appContext = context.applicationContext
-        scope.launch {
+        FetchyScope.launch {
             FetchyRepositoryProvider.get(appContext).saveFcmToken(token)
             val request = OneTimeWorkRequestBuilder<FetchySyncWorker>()
                 .setConstraints(

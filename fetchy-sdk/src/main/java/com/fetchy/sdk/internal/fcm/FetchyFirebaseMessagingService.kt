@@ -2,22 +2,18 @@ package com.fetchy.sdk.internal.fcm
 
 import android.content.Context
 import com.fetchy.sdk.internal.FetchyEngineProvider
+import com.fetchy.sdk.internal.FetchyScope
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class FetchyFirebaseMessagingService : FirebaseMessagingService() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun onNewToken(token: String) {
         FetchyFcmBridge.onNewToken(applicationContext, token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        scope.launch {
+        FetchyScope.launch {
             FetchyFcmBridge.onMessageReceived(applicationContext, message.data)
         }
     }
