@@ -21,6 +21,10 @@ internal class FetchyEngine(private val context: Context) {
     private val syncMutex = Mutex()
     private var lastFeedFetchCompletedAtElapsedMs = 0L
 
+    // Until this elapsed-realtime instant the Firebase token is not probed again.
+    @Volatile
+    private var fcmUnavailableUntilElapsedMs = 0L
+
     private data class PendingDisplay(val config: FetchyConfig, val ids: List<Long>)
 
     companion object {
@@ -29,6 +33,10 @@ internal class FetchyEngine(private val context: Context) {
     }
 
     suspend fun syncNow(allowFeedFetch: Boolean = true) {
+        // Asking Firebase for its token can block for the whole timeout when Google
+        // is unreachable. Do it before taking the sync mutex so a push that arrives
+        // meanwhile is not held up, and remember the outcome (see resolveFcmTokenStatus).
+        val fcmTokenStatus = resolveFcmTokenStatus()
         val pending = syncMutex.withLock {
         repository.reconcileInstallMarker()
         val config = repository.getConfig()
@@ -38,7 +46,6 @@ internal class FetchyEngine(private val context: Context) {
 
         val apiClient = FetchyApiClient(config.baseUrl)
         val suppressForeignProject = FetchyFirebaseGate.action == FirebaseBootstrapAction.PROJECT_MISMATCH
-        val fcmTokenStatus = if (suppressForeignProject) "project_mismatch" else readFcmTokenStatus()
         val existingToken = repository.getBackendToken()?.takeIf { it.isNotBlank() }
         val builtRequest = repository.buildRegisterRequest(config).copy(
             existingToken = existingToken,
@@ -142,6 +149,20 @@ internal class FetchyEngine(private val context: Context) {
         }
     }
 
+    private suspend fun resolveFcmTokenStatus(): String? {
+        if (FetchyFirebaseGate.action == FirebaseBootstrapAction.PROJECT_MISMATCH) {
+            return "project_mismatch"
+        }
+        val nowElapsed = SystemClock.elapsedRealtime()
+        if (!shouldProbeFcmToken(nowElapsed, fcmUnavailableUntilElapsedMs)) {
+            return "unavailable"
+        }
+        val status = readFcmTokenStatus()
+        fcmUnavailableUntilElapsedMs =
+            if (status == "unavailable") nowElapsed + FetchyConstants.fcmUnavailableCacheMs else 0L
+        return status
+    }
+
     private suspend fun readFcmTokenStatus(): String? {
         return try {
             val token = Tasks.await(FirebaseMessaging.getInstance().token, 10, TimeUnit.SECONDS)
@@ -210,6 +231,10 @@ internal fun shouldRegisterDevice(
     if (lastRegisterAtEpochMs == null) return true
     return nowEpochMs - lastRegisterAtEpochMs > registerRefreshIntervalMs
 }
+
+/** False while a recent "Firebase unavailable" result is still remembered. */
+internal fun shouldProbeFcmToken(nowElapsedMs: Long, unavailableUntilElapsedMs: Long): Boolean =
+    nowElapsedMs >= unavailableUntilElapsedMs
 
 internal fun registerTimestampAfterAttempt(
     previous: Long?,

@@ -88,4 +88,17 @@ class FetchyRegisterPolicyTest {
         assertEquals(previous, registerTimestampAfterAttempt(previous, succeeded = false, nowEpochMs = 5_000L))
         assertEquals(5_000L, registerTimestampAfterAttempt(previous, succeeded = true, nowEpochMs = 5_000L))
     }
+
+    @Test
+    fun probesFirebaseAgainOnlyAfterTheUnavailableWindowEnds() {
+        val until = 10_000L + FetchyConstants.fcmUnavailableCacheMs
+        assertFalse(shouldProbeFcmToken(nowElapsedMs = 10_001L, unavailableUntilElapsedMs = until))
+        assertFalse(shouldProbeFcmToken(nowElapsedMs = until - 1, unavailableUntilElapsedMs = until))
+        assertTrue(shouldProbeFcmToken(nowElapsedMs = until, unavailableUntilElapsedMs = until))
+    }
+
+    @Test
+    fun aNeverRememberedResultAlwaysProbes() {
+        assertTrue(shouldProbeFcmToken(nowElapsedMs = 0L, unavailableUntilElapsedMs = 0L))
+    }
 }

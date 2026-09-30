@@ -5,6 +5,8 @@ internal object FetchyConstants {
     const val periodicPullIntervalMinutes = 15L
     const val foregroundPullIntervalMs = 60_000L
     const val registerRefreshIntervalMs = 24L * 60L * 60L * 1000L
+    // How long "Firebase is unavailable" is remembered before the token is probed again.
+    const val fcmUnavailableCacheMs = 30L * 60L * 1000L
     const val notificationDedupeTtlMs = 48L * 60L * 60L * 1000L
     const val notificationEndGraceMs = 60L * 60L * 1000L
     const val maxDisplayAttempts = 3
