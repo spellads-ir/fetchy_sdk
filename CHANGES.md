@@ -2,8 +2,10 @@
 
 ## Room/KSP compatibility fix
 
+- Upgrade Room to 2.7.0 so KSP generates Kotlin DAO implementations compatible with Kotlin 2.2.
+- Align AGP, Gradle, Kotlin, and KSP with the Kotlin 2.2.20 build matrix.
 - Return non-void values from all data-writing Room DAO methods so KSP can process them under Kotlin 2.2.
-- Bump the Android SDK version to 1.6.2.
+- Bump the Android SDK version to 1.6.3.
 
 Date: 2026-08-19  
 Branch: `main`  

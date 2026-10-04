@@ -6,7 +6,9 @@
 }
 
 group = "com.fetchy"
-version = "1.6.2"
+version = "1.6.3"
+
+val roomVersion = "2.7.0"
 
 android {
     namespace = "com.fetchy.sdk"
@@ -45,7 +47,7 @@ android {
     }
 
     buildTypes.all {
-        buildConfigField("String", "FETCHY_SDK_VERSION", "\"1.6.2\"")
+        buildConfigField("String", "FETCHY_SDK_VERSION", "\"1.6.3\"")
     }
 }
 
@@ -88,9 +90,9 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
     implementation("com.caverock:androidsvg-aar:1.4")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.firebase:firebase-messaging:24.1.1")
