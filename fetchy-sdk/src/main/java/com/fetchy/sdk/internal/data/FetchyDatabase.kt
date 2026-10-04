@@ -71,7 +71,7 @@ internal interface SpStateDao {
     suspend fun getValue(key: String): String?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(entity: SpStateEntity)
+    suspend fun upsert(entity: SpStateEntity): Long
 
     @Query("DELETE FROM pn_state WHERE `key` IN (:keys)")
     suspend fun deleteKeys(keys: List<String>): Int
@@ -128,7 +128,7 @@ internal interface SpAckDao {
 @Dao
 internal interface SpPendingReportDao {
     @Insert
-    suspend fun insert(entity: SpPendingReportEntity)
+    suspend fun insert(entity: SpPendingReportEntity): Long
 
     @Query(
         "SELECT * FROM pn_pending_reports ORDER BY createdAtEpochMs ASC, id ASC LIMIT :limit"

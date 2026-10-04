@@ -2,8 +2,8 @@
 
 ## Room/KSP compatibility fix
 
-- Return affected-row counts from data-changing Room `@Query` DAO methods so KSP can process them under Kotlin 2.2.
-- Bump the Android SDK version to 1.6.1.
+- Return non-void values from all data-writing Room DAO methods so KSP can process them under Kotlin 2.2.
+- Bump the Android SDK version to 1.6.2.
 
 Date: 2026-08-19  
 Branch: `main`  
