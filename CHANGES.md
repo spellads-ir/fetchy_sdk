@@ -1,5 +1,10 @@
 # Uncommitted changes
 
+## Room/KSP compatibility fix
+
+- Return affected-row counts from data-changing Room `@Query` DAO methods so KSP can process them under Kotlin 2.2.
+- Bump the Android SDK version to 1.6.1.
+
 Date: 2026-08-19  
 Branch: `main`  
 Version: **1.3.8 → 1.4.0**

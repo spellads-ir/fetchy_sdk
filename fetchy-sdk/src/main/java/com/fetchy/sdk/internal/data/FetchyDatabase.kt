@@ -74,7 +74,7 @@ internal interface SpStateDao {
     suspend fun upsert(entity: SpStateEntity)
 
     @Query("DELETE FROM pn_state WHERE `key` IN (:keys)")
-    suspend fun deleteKeys(keys: List<String>)
+    suspend fun deleteKeys(keys: List<String>): Int
 }
 
 @Dao
@@ -89,13 +89,13 @@ internal interface SpNotificationDao {
     suspend fun getById(localId: Long): SpNotificationEntity?
 
     @Query("UPDATE pn_notifications SET displayedAtEpochMs = :displayedAt WHERE localId = :localId")
-    suspend fun markDisplayed(localId: Long, displayedAt: Long)
+    suspend fun markDisplayed(localId: Long, displayedAt: Long): Int
 
     @Query("UPDATE pn_notifications SET openedAtEpochMs = :openedAt WHERE localId = :localId")
-    suspend fun markOpened(localId: Long, openedAt: Long)
+    suspend fun markOpened(localId: Long, openedAt: Long): Int
 
     @Query("DELETE FROM pn_notifications WHERE expiresAtEpochMs > 0 AND expiresAtEpochMs <= :nowEpochMs")
-    suspend fun deleteExpired(nowEpochMs: Long)
+    suspend fun deleteExpired(nowEpochMs: Long): Int
 
     @Query(
         "SELECT localId FROM pn_notifications " +
@@ -104,19 +104,19 @@ internal interface SpNotificationDao {
     suspend fun pendingDisplayIds(maxAttempts: Int): List<Long>
 
     @Query("UPDATE pn_notifications SET displayAttempts = displayAttempts + 1 WHERE localId = :localId")
-    suspend fun incrementDisplayAttempts(localId: Long)
+    suspend fun incrementDisplayAttempts(localId: Long): Int
 
     @Query(
         "UPDATE pn_notifications SET source = 'PUSH' " +
             "WHERE dedupeKey = :dedupeKey AND displayedAtEpochMs IS NULL"
     )
-    suspend fun markUndisplayedAsPush(dedupeKey: String)
+    suspend fun markUndisplayedAsPush(dedupeKey: String): Int
 
     @Query("UPDATE pn_notifications SET expiresAtEpochMs = :expiresAtEpochMs WHERE localId = :localId")
-    suspend fun updateExpiresAt(localId: Long, expiresAtEpochMs: Long)
+    suspend fun updateExpiresAt(localId: Long, expiresAtEpochMs: Long): Int
 
     @Query("DELETE FROM pn_notifications")
-    suspend fun clearAll()
+    suspend fun clearAll(): Int
 }
 
 @Dao
@@ -136,7 +136,7 @@ internal interface SpPendingReportDao {
     suspend fun oldest(limit: Int): List<SpPendingReportEntity>
 
     @Query("DELETE FROM pn_pending_reports WHERE id IN (:ids)")
-    suspend fun deleteIds(ids: List<Long>)
+    suspend fun deleteIds(ids: List<Long>): Int
 }
 
 @Database(
